@@ -1,0 +1,29 @@
+# Python & Django
+venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+db.sqlite3
+local_settings.py
+*.log
+.env
+
+# Node & Expo
+node_modules/
+frontend/node_modules/
+.expo/
+frontend/.expo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+web-build/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
