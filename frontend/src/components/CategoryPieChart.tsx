@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { G, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors } from '../constants/theme';
 import { CategoryExpense } from '../db/queries';
 import { centsToBRL } from '../utils/formatCurrency';
@@ -15,11 +16,21 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({
   data,
   totalExpense,
 }) => {
+  const router = useRouter();
+
   if (data.length === 0 || totalExpense === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="pie-chart-outline" size={36} color={Colors.textMuted} />
         <Text style={styles.emptyText}>Nenhuma despesa registrada neste mês</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(app)/categorias')}
+          style={styles.emptyManageBtn}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="pricetags-outline" size={14} color={Colors.primary} />
+          <Text style={styles.emptyManageText}>Personalizar Categorias</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -35,7 +46,17 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Despesas por Categoria</Text>
+      <View style={styles.cardHeaderRow}>
+        <Text style={styles.cardTitle}>Despesas por Categoria</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(app)/categorias')}
+          style={styles.manageLink}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.manageLinkText}>Gerenciar</Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.chartWrapper}>
         <View style={styles.svgContainer}>
@@ -122,7 +143,41 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 16,
     fontWeight: '600',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  manageLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  manageLinkText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyManageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${Colors.primary}18`,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    marginTop: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: `${Colors.primary}30`,
+  },
+  emptyManageText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
   chartWrapper: {
     alignItems: 'center',

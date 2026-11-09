@@ -13,9 +13,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
-import { Category, Transaction } from '../db/queries';
+import { Category, Transaction, addCategory } from '../db/queries';
 import { formatCentsForInput, parseBRLToCents } from '../utils/formatCurrency';
 import { getTodayDateString } from '../utils/dates';
+import { useAuth } from '../context/AuthContext';
+import { useFinance } from '../context/FinanceContext';
+import { CategoryModal } from './CategoryModal';
 
 interface TransactionModalProps {
   visible: boolean;
@@ -46,6 +49,19 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [date, setDate] = useState<string>(getTodayDateString());
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
+
+  const { user } = useAuth();
+  const { reloadCategories, triggerRefresh } = useFinance();
+
+  const handleCreateCategory = async (data: { name: string; color: string; icon: string }) => {
+    if (!user) return;
+    const newId = await addCategory(user.id, data.name, data.color, data.icon);
+    await reloadCategories();
+    triggerRefresh();
+    setSelectedCategoryId(newId);
+    setShowCategoryModal(false);
+  };
 
   useEffect(() => {
     if (transactionToEdit) {
@@ -207,8 +223,31 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
             {/* Seletor de Categoria */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Categoria</Text>
+              <View style={styles.catHeaderRow}>
+                <Text style={styles.inputLabel}>Categoria</Text>
+                <TouchableOpacity
+                  onPress={() => setShowCategoryModal(true)}
+                  style={styles.addCategoryLink}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add-circle-outline" size={16} color={Colors.primary} />
+                  <Text style={styles.addCategoryLinkText}>Nova</Text>
+                </TouchableOpacity>
+              </View>
+
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
+                {/* Botão rápido para adicionar nova categoria */}
+                <TouchableOpacity
+                  style={styles.addCatChip}
+                  onPress={() => setShowCategoryModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.addCatIconWrap}>
+                    <Ionicons name="add" size={16} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.addCatChipText}>Criar Nova</Text>
+                </TouchableOpacity>
+
                 {categories.map((cat) => {
                   const isSelected = selectedCategoryId === cat.id;
                   return (
@@ -283,6 +322,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Modal de Criação Rápida de Categoria */}
+      <CategoryModal
+        visible={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        onSave={handleCreateCategory}
+      />
     </Modal>
   );
 };
@@ -379,9 +425,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  catHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addCategoryLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  addCategoryLinkText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   catScroll: {
     flexDirection: 'row',
     paddingVertical: 4,
+  },
+  addCatChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${Colors.primary}18`,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: `${Colors.primary}60`,
+    borderStyle: 'dashed',
+    gap: 6,
+  },
+  addCatIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: `${Colors.primary}25`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addCatChipText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   catChip: {
     flexDirection: 'row',

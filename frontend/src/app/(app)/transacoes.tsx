@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
 import { Colors } from '../../constants/theme';
@@ -25,6 +26,7 @@ import { centsToBRL } from '../../utils/formatCurrency';
 import { formatDateBR } from '../../utils/dates';
 
 export default function TransacoesScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const { selectedMonthKey, setSelectedMonthKey, categories, refreshKey, triggerRefresh } =
     useFinance();
@@ -165,19 +167,30 @@ export default function TransacoesScreen() {
           })}
         </View>
 
-        {/* Resumo do filtro */}
+        {/* Resumo do filtro e atalho para categorias */}
         <View style={styles.filterSummary}>
-          <Text style={styles.filterSummaryText}>
-            {filteredTransactions.length} transaç{filteredTransactions.length === 1 ? 'ão' : 'ões'}
-          </Text>
-          <Text
-            style={[
-              styles.filterSummaryTotal,
-              { color: totalFiltered >= 0 ? Colors.income : Colors.expense },
-            ]}
+          <View>
+            <Text style={styles.filterSummaryText}>
+              {filteredTransactions.length} transaç{filteredTransactions.length === 1 ? 'ão' : 'ões'}
+            </Text>
+            <Text
+              style={[
+                styles.filterSummaryTotal,
+                { color: totalFiltered >= 0 ? Colors.income : Colors.expense },
+              ]}
+            >
+              {centsToBRL(totalFiltered)}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.manageCatBtn}
+            onPress={() => router.push('/(app)/categorias')}
+            activeOpacity={0.7}
           >
-            {centsToBRL(totalFiltered)}
-          </Text>
+            <Ionicons name="pricetags-outline" size={15} color={Colors.primary} />
+            <Text style={styles.manageCatBtnText}>Gerenciar Categorias</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -335,6 +348,22 @@ const styles = StyleSheet.create({
   },
   filterSummaryTotal: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  manageCatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${Colors.primary}18`,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: `${Colors.primary}30`,
+  },
+  manageCatBtnText: {
+    color: Colors.primary,
+    fontSize: 12,
     fontWeight: '700',
   },
   listContent: {

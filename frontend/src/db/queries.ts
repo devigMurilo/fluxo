@@ -137,8 +137,41 @@ export async function updateCategory(
   );
 }
 
+export async function getCategoriesWithCount(
+  userId: number
+): Promise<(Category & { transactionCount: number })[]> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.categories || [];
+    const userCats = list.filter((c: Category) => c.user_id === userId);
+    const txs = (webStorage.data.transactions || []).filter((t: any) => t.user_id === userId);
+    return userCats.map((c: Category) => ({
+      ...c,
+      transactionCount: txs.filter((t: any) => t.category_id === c.id).length,
+    }));
+  }
+
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `
+    SELECT c.*, COUNT(t.id) as transactionCount
+    FROM categories c
+    LEFT JOIN transactions t ON c.id = t.category_id AND t.user_id = ?
+    WHERE c.user_id = ?
+    GROUP BY c.id
+    ORDER BY c.name ASC
+  `,
+    [userId, userId]
+  );
+  return rows as (Category & { transactionCount: number })[];
+}
+
 export async function deleteCategory(userId: number, id: number): Promise<void> {
   if (Platform.OS === 'web') {
+    (webStorage.data.transactions || []).forEach((t: any) => {
+      if (t.category_id === id && t.user_id === userId) {
+        t.category_id = null;
+      }
+    });
     webStorage.data.categories = (webStorage.data.categories || []).filter(
       (c: any) => !(c.id === id && c.user_id === userId)
     );
@@ -147,6 +180,10 @@ export async function deleteCategory(userId: number, id: number): Promise<void> 
   }
 
   const db = await getDatabase();
+  await db.runAsync(
+    'UPDATE transactions SET category_id = NULL WHERE category_id = ? AND user_id = ?',
+    [id, userId]
+  );
   await db.runAsync('DELETE FROM categories WHERE id = ? AND user_id = ?', [id, userId]);
 }
 

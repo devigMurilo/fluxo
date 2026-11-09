@@ -92,7 +92,7 @@ export default function AppLayout() {
         options={{
           href: null,
           title: 'Categorias',
-          headerTitle: 'Gerenciar Categorias',
+          headerShown: false,
         }}
       />
     </Tabs>
