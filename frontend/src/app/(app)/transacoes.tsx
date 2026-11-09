@@ -185,7 +185,7 @@ export default function TransacoesScreen() {
 
           <TouchableOpacity
             style={styles.manageCatBtn}
-            onPress={() => router.push('/(app)/categorias')}
+            onPress={() => router.push('/categorias')}
             activeOpacity={0.7}
           >
             <Ionicons name="pricetags-outline" size={15} color={Colors.primary} />

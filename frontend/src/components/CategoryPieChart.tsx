@@ -24,7 +24,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({
         <Ionicons name="pie-chart-outline" size={36} color={Colors.textMuted} />
         <Text style={styles.emptyText}>Nenhuma despesa registrada neste mês</Text>
         <TouchableOpacity
-          onPress={() => router.push('/(app)/categorias')}
+          onPress={() => router.push('/categorias')}
           style={styles.emptyManageBtn}
           activeOpacity={0.7}
         >
@@ -49,7 +49,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({
       <View style={styles.cardHeaderRow}>
         <Text style={styles.cardTitle}>Despesas por Categoria</Text>
         <TouchableOpacity
-          onPress={() => router.push('/(app)/categorias')}
+          onPress={() => router.push('/categorias')}
           style={styles.manageLink}
           activeOpacity={0.7}
         >

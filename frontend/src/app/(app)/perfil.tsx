@@ -138,7 +138,7 @@ export default function PerfilScreen() {
 
         <TouchableOpacity
           style={styles.menuRow}
-          onPress={() => router.push('/(app)/categorias')}
+          onPress={() => router.push('/categorias')}
           activeOpacity={0.7}
         >
           <View style={styles.menuRowLeft}>

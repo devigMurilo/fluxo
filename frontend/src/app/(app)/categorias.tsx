@@ -146,7 +146,7 @@ export default function CategoriasScreen() {
             if (router.canGoBack()) {
               router.back();
             } else {
-              router.push('/(app)');
+              router.push('/');
             }
           }}
           activeOpacity={0.7}

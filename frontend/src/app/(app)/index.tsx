@@ -186,7 +186,7 @@ export default function DashboardScreen() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push('/(app)/categorias')}
+            onPress={() => router.push('/categorias')}
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: `${Colors.purple}20` }]}>

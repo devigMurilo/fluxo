@@ -31,7 +31,7 @@ export default function AppLayout() {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
         },
       }}
@@ -53,6 +53,17 @@ export default function AppLayout() {
           headerTitle: 'Minhas Transações',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="swap-horizontal-outline" size={size} color={color as string} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="categorias"
+        options={{
+          title: 'Categorias',
+          headerTitle: 'Minhas Categorias',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="pricetags-outline" size={size} color={color as string} />
           ),
         }}
       />
@@ -84,15 +95,6 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color as string} />
           ),
-        }}
-      />
-      {/* Rota oculta das abas, acessível pelas telas para gerenciar categorias */}
-      <Tabs.Screen
-        name="categorias"
-        options={{
-          href: null,
-          title: 'Categorias',
-          headerShown: false,
         }}
       />
     </Tabs>
