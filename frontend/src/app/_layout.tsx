@@ -5,9 +5,10 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { FinanceProvider } from '../context/FinanceContext';
 import { Colors } from '../constants/theme';
+import { AppLockOverlay } from '../components/AppLockOverlay';
 
 function NavigationGate() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAppLocked } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -19,11 +20,11 @@ function NavigationGate() {
     if (!user && !inAuthGroup) {
       // Sem usuário logado e tentando acessar rota protegida
       router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
+    } else if (user && inAuthGroup && !isAppLocked) {
       // Usuário autenticado tentando acessar login/cadastro
       router.replace('/(app)');
     }
-  }, [user, isLoading, segments, router]);
+  }, [user, isLoading, isAppLocked, segments, router]);
 
   if (isLoading) {
     return (
@@ -33,7 +34,12 @@ function NavigationGate() {
     );
   }
 
-  return <Slot />;
+  return (
+    <View style={styles.container}>
+      <Slot />
+      {user && isAppLocked && <AppLockOverlay />}
+    </View>
+  );
 }
 
 export default function RootLayout() {
@@ -48,6 +54,10 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   loadingContainer: {
     flex: 1,
     backgroundColor: Colors.background,

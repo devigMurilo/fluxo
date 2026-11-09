@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,12 +20,29 @@ import { api, saveCustomApiUrl, DEFAULT_API_URL } from '../../services/api';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const {
+    login,
+    biometricsSupported,
+    biometricsEnrolled,
+    biometricsEnabled,
+    biometryType,
+    biometryLabel,
+    savedBiometricUser,
+    loginWithBiometrics,
+  } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  // Preenche o e-mail automaticamente se houver usuário cadastrado na biometria
+  useEffect(() => {
+    if (savedBiometricUser?.email && !email) {
+      setEmail(savedBiometricUser.email);
+    }
+  }, [savedBiometricUser]);
 
   // Modal para ajuste de IP do servidor em celular físico
   const [showApiModal, setShowApiModal] = useState(false);
@@ -51,12 +69,35 @@ export default function LoginScreen() {
     }
   };
 
+  const handleBiometricLogin = async () => {
+    if (biometricLoading || loading) return;
+    try {
+      setBiometricLoading(true);
+      const res = await loginWithBiometrics();
+      if (!res.success && res.error) {
+        // Se o usuário cancelou voluntariamente, não precisa emitir pop-up estridente
+        if (!res.error.toLowerCase().includes('cancel')) {
+          Alert.alert('Acesso Biométrico', res.error);
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err?.message || 'Falha ao autenticar com biometria.');
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
   const handleSaveApiUrl = async () => {
     if (!customUrl.trim()) return;
     await saveCustomApiUrl(customUrl.trim());
     setShowApiModal(false);
     Alert.alert('Sucesso', `URL da API atualizada para: ${customUrl.trim()}`);
   };
+
+  const showBiometricsButton =
+    biometricsSupported && biometricsEnrolled && biometricsEnabled && savedBiometricUser;
+
+  const isFaceId = biometryType === 'FACE_ID';
 
   return (
     <KeyboardAvoidingView
@@ -72,6 +113,43 @@ export default function LoginScreen() {
           <Text style={styles.brandTitle}>Fluxo</Text>
           <Text style={styles.brandSubtitle}>Suas finanças pessoais com clareza e controle</Text>
         </View>
+
+        {/* Card de Acesso Rápido por Biometria / Face ID */}
+        {showBiometricsButton && (
+          <View style={styles.biometricContainer}>
+            <TouchableOpacity
+              style={styles.biometricCard}
+              onPress={handleBiometricLogin}
+              disabled={biometricLoading || loading}
+              activeOpacity={0.82}
+            >
+              <View style={styles.biometricIconBadge}>
+                {biometricLoading ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Ionicons
+                    name={isFaceId ? 'scan-outline' : 'finger-print-outline'}
+                    size={28}
+                    color={Colors.primary}
+                  />
+                )}
+              </View>
+              <View style={styles.biometricTextWrap}>
+                <Text style={styles.biometricTitle}>Entrar com {biometryLabel}</Text>
+                <Text style={styles.biometricSub} numberOfLines={1}>
+                  Continuar como {savedBiometricUser.name || savedBiometricUser.email}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ou acesse com sua senha</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          </View>
+        )}
 
         {/* Form Card */}
         <View style={styles.card}>
@@ -121,7 +199,7 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || biometricLoading}
             activeOpacity={0.8}
           >
             <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar no Fluxo'}</Text>
@@ -189,7 +267,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   logoWrap: {
     width: 72,
@@ -214,6 +292,61 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: 'center',
     maxWidth: 260,
+  },
+  biometricContainer: {
+    marginBottom: 20,
+  },
+  biometricCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: `${Colors.primary}60`,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  biometricIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: `${Colors.primary}18`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  biometricTextWrap: {
+    flex: 1,
+  },
+  biometricTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  biometricSub: {
+    color: Colors.textMuted,
+    fontSize: 13,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  dividerText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    paddingHorizontal: 12,
   },
   card: {
     backgroundColor: Colors.surface,

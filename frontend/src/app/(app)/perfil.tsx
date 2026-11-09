@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -16,10 +18,60 @@ import { api, saveCustomApiUrl, DEFAULT_API_URL } from '../../services/api';
 
 export default function PerfilScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const {
+    user,
+    logout,
+    biometricsSupported,
+    biometricsEnrolled,
+    biometricsEnabled,
+    biometryType,
+    biometryLabel,
+    toggleBiometrics,
+  } = useAuth();
 
   const [apiUrl, setApiUrl] = useState(api.defaults.baseURL || DEFAULT_API_URL);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  const handleToggleBiometrics = async (value: boolean) => {
+    if (biometricLoading) return;
+    setBiometricLoading(true);
+    try {
+      if (value) {
+        const res = await toggleBiometrics(true);
+        if (res.success) {
+          Alert.alert(
+            'Biometria ativada! 🛡️',
+            `Agora você pode entrar e desbloquear o Fluxo usando seu ${biometryLabel}.`
+          );
+        } else {
+          if (!res.error?.toLowerCase().includes('cancel')) {
+            Alert.alert('Não foi possível ativar', res.error || 'A autenticação falhou.');
+          }
+        }
+      } else {
+        Alert.alert(
+          'Desativar Biometria',
+          `Deseja realmente desativar o acesso por ${biometryLabel}?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Desativar',
+              style: 'destructive',
+              onPress: async () => {
+                await toggleBiometrics(false);
+                Alert.alert('Desativada', 'O acesso biométrico foi desativado.');
+              },
+            },
+          ]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err?.message || 'Falha ao alterar configuração de biometria.');
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   const handleSaveApi = async () => {
     if (!apiUrl.trim()) return;
@@ -59,6 +111,8 @@ export default function PerfilScreen() {
       },
     ]);
   };
+
+  const isFaceId = biometryType === 'FACE_ID';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -100,6 +154,50 @@ export default function PerfilScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Segurança & Biometria / Face ID */}
+      <View style={styles.card}>
+        <Text style={styles.cardSectionTitle}>Segurança & Acesso</Text>
+        <Text style={styles.cardDesc}>
+          Bloqueie o aplicativo e entre com mais rapidez e privacidade.
+        </Text>
+
+        <View style={styles.biometricRow}>
+          <View style={styles.menuRowLeft}>
+            <View style={[styles.menuIconCircle, { backgroundColor: `${Colors.primary}20` }]}>
+              {biometricLoading ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Ionicons
+                  name={isFaceId ? 'scan-outline' : 'finger-print-outline'}
+                  size={20}
+                  color={Colors.primary}
+                />
+              )}
+            </View>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={styles.menuRowTitle}>Login com {biometryLabel}</Text>
+              <Text style={styles.menuRowSub}>
+                {!biometricsSupported
+                  ? 'Aparelho não possui sensor biométrico'
+                  : !biometricsEnrolled
+                  ? 'Nenhuma biometria cadastrada no celular'
+                  : biometricsEnabled
+                  ? `Ativado para login e desbloqueio`
+                  : `Toque no interruptor para ativar`}
+              </Text>
+            </View>
+          </View>
+
+          <Switch
+            value={biometricsEnabled}
+            onValueChange={handleToggleBiometrics}
+            disabled={!biometricsSupported || !biometricsEnrolled || biometricLoading}
+            trackColor={{ false: Colors.border, true: `${Colors.primary}80` }}
+            thumbColor={biometricsEnabled ? Colors.primary : Colors.textMuted}
+          />
+        </View>
+      </View>
+
       {/* Configurações de Conexão com API */}
       <View style={styles.card}>
         <Text style={styles.cardSectionTitle}>Servidor de Autenticação (Django)</Text>
@@ -139,7 +237,7 @@ export default function PerfilScreen() {
         <Text style={styles.cardSectionTitle}>Sobre o Aplicativo</Text>
         <View style={styles.infoRow}>
           <Text style={styles.infoKey}>Versão</Text>
-          <Text style={styles.infoVal}>1.0.0 (MVP)</Text>
+          <Text style={styles.infoVal}>1.1.0 (com Biometria)</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoKey}>Armazenamento</Text>
@@ -147,7 +245,9 @@ export default function PerfilScreen() {
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoKey}>Segurança</Text>
-          <Text style={styles.infoVal}>Tokens JWT + SecureStore</Text>
+          <Text style={styles.infoVal}>
+            {biometricsEnabled ? `${biometryLabel} + JWT Seguro` : 'Tokens JWT + SecureStore'}
+          </Text>
         </View>
       </View>
 
@@ -242,10 +342,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
   },
+  biometricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
   menuRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   menuIconCircle: {
     width: 38,
