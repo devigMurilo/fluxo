@@ -297,8 +297,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: 18,
-    paddingBottom: 90,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 100,
   },
   userGreeting: {
     marginBottom: 6,

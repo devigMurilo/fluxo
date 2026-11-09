@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   topBar: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 8,
   },
   searchBar: {
@@ -367,9 +367,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 90,
-    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 100,
+    gap: 12,
   },
   centerContainer: {
     flex: 1,

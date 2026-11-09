@@ -8,9 +8,12 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
 import { Colors, CategoryPresets } from '../../constants/theme';
@@ -27,8 +30,14 @@ type CategoryWithCount = Category & { transactionCount: number };
 
 export default function CategoriasScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { reloadCategories, triggerRefresh, refreshKey } = useFinance();
+
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 16
+  );
 
   const [categoriesWithCount, setCategoriesWithCount] = useState<CategoryWithCount[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -138,8 +147,8 @@ export default function CategoriasScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Bar com Navegação e Ações */}
-      <View style={styles.topBar}>
+      {/* Top Bar com Navegação e Ações com Safe Area */}
+      <View style={[styles.topBar, { paddingTop: topInset + 10 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
@@ -312,15 +321,14 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-    gap: 12,
+    paddingHorizontal: 22,
+    paddingBottom: 14,
+    gap: 14,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -332,22 +340,22 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: Colors.text,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
   },
   headerCountBadge: {
     color: Colors.textMuted,
     fontSize: 12,
-    marginTop: 1,
+    marginTop: 2,
   },
   addHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    gap: 4,
+    paddingVertical: 9,
+    paddingHorizontal: 15,
+    borderRadius: 14,
+    gap: 5,
   },
   addHeaderBtnText: {
     color: '#FFF',
@@ -355,16 +363,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   searchContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    paddingHorizontal: 22,
+    marginBottom: 12,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: Colors.border,
     gap: 10,
@@ -381,16 +389,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 100,
-    gap: 10,
+    paddingHorizontal: 22,
+    paddingTop: 4,
+    paddingBottom: 120,
+    gap: 12,
   },
   cardItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -514,18 +523,18 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 20,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    bottom: 30,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 10,
+    elevation: 8,
   },
 });
