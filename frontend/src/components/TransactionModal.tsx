@@ -12,13 +12,12 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/theme';
+import { Colors, AvailableColors, AvailableIcons } from '../constants/theme';
 import { Category, Transaction, addCategory } from '../db/queries';
 import { formatCentsForInput, parseBRLToCents } from '../utils/formatCurrency';
 import { getTodayDateString } from '../utils/dates';
 import { useAuth } from '../context/AuthContext';
 import { useFinance } from '../context/FinanceContext';
-import { CategoryModal } from './CategoryModal';
 
 interface TransactionModalProps {
   visible: boolean;
@@ -49,18 +48,35 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [date, setDate] = useState<string>(getTodayDateString());
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
+  const [showCreateCategory, setShowCreateCategory] = useState<boolean>(false);
+  const [newCatName, setNewCatName] = useState<string>('');
+  const [newCatColor, setNewCatColor] = useState<string>(AvailableColors[0]);
+  const [newCatIcon, setNewCatIcon] = useState<string>(AvailableIcons[0]);
 
   const { user } = useAuth();
   const { reloadCategories, triggerRefresh } = useFinance();
 
-  const handleCreateCategory = async (data: { name: string; color: string; icon: string }) => {
+  const handleSaveInlineCategory = async () => {
     if (!user) return;
-    const newId = await addCategory(user.id, data.name, data.color, data.icon);
-    await reloadCategories();
-    triggerRefresh();
-    setSelectedCategoryId(newId);
-    setShowCategoryModal(false);
+    if (!newCatName.trim()) {
+      Alert.alert('Nome obrigatório', 'Informe o nome da categoria.');
+      return;
+    }
+    try {
+      const newId = await addCategory(
+        user.id,
+        newCatName.trim(),
+        newCatColor,
+        newCatIcon
+      );
+      await reloadCategories();
+      triggerRefresh();
+      setSelectedCategoryId(newId);
+      setNewCatName('');
+      setShowCreateCategory(false);
+    } catch (e: any) {
+      Alert.alert('Erro ao criar categoria', e.message || 'Falha ao salvar categoria.');
+    }
   };
 
   useEffect(() => {
@@ -226,20 +242,99 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <View style={styles.catHeaderRow}>
                 <Text style={styles.inputLabel}>Categoria</Text>
                 <TouchableOpacity
-                  onPress={() => setShowCategoryModal(true)}
+                  onPress={() => setShowCreateCategory(!showCreateCategory)}
                   style={styles.addCategoryLink}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="add-circle-outline" size={16} color={Colors.primary} />
-                  <Text style={styles.addCategoryLinkText}>Nova</Text>
+                  <Ionicons
+                    name={showCreateCategory ? 'close-circle-outline' : 'add-circle-outline'}
+                    size={16}
+                    color={Colors.primary}
+                  />
+                  <Text style={styles.addCategoryLinkText}>
+                    {showCreateCategory ? 'Fechar' : 'Nova'}
+                  </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Formulário Inline para Nova Categoria (sem modal aninhado) */}
+              {showCreateCategory && (
+                <View style={styles.inlineCatBox}>
+                  <Text style={styles.inlineCatTitle}>Criar Categoria Rápida</Text>
+
+                  <View style={styles.inlinePreviewRow}>
+                    <View style={[styles.inlineIconPreview, { backgroundColor: newCatColor }]}>
+                      <Ionicons name={newCatIcon as any} size={20} color="#FFF" />
+                    </View>
+                    <TextInput
+                      style={styles.inlineNameInput}
+                      placeholder="Nome da categoria (ex: Farmácia)"
+                      placeholderTextColor={Colors.textMuted}
+                      value={newCatName}
+                      onChangeText={setNewCatName}
+                    />
+                  </View>
+
+                  <Text style={styles.inlineSubText}>Cor</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroll}>
+                    {AvailableColors.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[
+                          styles.inlineColorDot,
+                          { backgroundColor: c },
+                          newCatColor === c && styles.inlineColorSelected,
+                        ]}
+                        onPress={() => setNewCatColor(c)}
+                      />
+                    ))}
+                  </ScrollView>
+
+                  <Text style={styles.inlineSubText}>Ícone</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroll}>
+                    {AvailableIcons.slice(0, 16).map((ic) => (
+                      <TouchableOpacity
+                        key={ic}
+                        style={[
+                          styles.inlineIconItem,
+                          newCatIcon === ic && {
+                            borderColor: newCatColor,
+                            backgroundColor: `${newCatColor}20`,
+                          },
+                        ]}
+                        onPress={() => setNewCatIcon(ic)}
+                      >
+                        <Ionicons
+                          name={ic as any}
+                          size={18}
+                          color={newCatIcon === ic ? newCatColor : Colors.textMuted}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity
+                      style={styles.inlineCancelBtn}
+                      onPress={() => setShowCreateCategory(false)}
+                    >
+                      <Text style={styles.inlineCancelText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.inlineSaveBtn}
+                      onPress={handleSaveInlineCategory}
+                    >
+                      <Text style={styles.inlineSaveText}>Salvar e Selecionar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
                 {/* Botão rápido para adicionar nova categoria */}
                 <TouchableOpacity
                   style={styles.addCatChip}
-                  onPress={() => setShowCategoryModal(true)}
+                  onPress={() => setShowCreateCategory(!showCreateCategory)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.addCatIconWrap}>
@@ -322,13 +417,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-
-      {/* Modal de Criação Rápida de Categoria */}
-      <CategoryModal
-        visible={showCategoryModal}
-        onClose={() => setShowCategoryModal(false)}
-        onSave={handleCreateCategory}
-      />
     </Modal>
   );
 };
@@ -442,6 +530,103 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 12,
     fontWeight: '600',
+  },
+  inlineCatBox: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: `${Colors.primary}40`,
+  },
+  inlineCatTitle: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  inlinePreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  inlineIconPreview: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineNameInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: Colors.text,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  inlineSubText: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  inlineScroll: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+  },
+  inlineColorDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: 8,
+  },
+  inlineColorSelected: {
+    borderWidth: 2,
+    borderColor: '#FFF',
+    transform: [{ scale: 1.15 }],
+  },
+  inlineIconItem: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  inlineActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  inlineCancelBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  inlineCancelText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+  },
+  inlineSaveBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  inlineSaveText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   catScroll: {
     flexDirection: 'row',
