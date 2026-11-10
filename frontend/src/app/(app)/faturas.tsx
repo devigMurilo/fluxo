@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
@@ -27,6 +28,7 @@ import { centsToBRL } from '../../utils/formatCurrency';
 import { playHaptic } from '../../utils/haptics';
 
 export default function FaturasScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { selectedMonthKey, setSelectedMonthKey, refreshKey, triggerRefresh } = useFinance();
@@ -142,6 +144,38 @@ export default function FaturasScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Top Bar com Botão Voltar */}
+      <View style={[styles.topBarHeader, { paddingTop: Math.max(insets.top, 16) + 10 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            playHaptic.light();
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        </TouchableOpacity>
+
+        <View style={styles.topBarTextWrap}>
+          <Text style={styles.headerTitle}>Faturas & Lembretes</Text>
+          <Text style={styles.headerSubtitle}>Contas fixas e datas de vencimento</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.addHeaderBtn}
+          onPress={handleOpenAdd}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={20} color="#FFF" />
+          <Text style={styles.addHeaderBtnText}>Nova</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.topSection}>
         <MonthSelector
           currentMonthKey={selectedMonthKey}
@@ -286,6 +320,53 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  topBarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: 12,
+  },
+  topBarTextWrap: {
+    flex: 1,
+  },
+  headerTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  addHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 4,
+  },
+  addHeaderBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   topSection: {
     paddingHorizontal: 16,

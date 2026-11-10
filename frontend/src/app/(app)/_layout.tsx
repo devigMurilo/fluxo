@@ -107,6 +107,7 @@ export default function AppLayout() {
           href: null,
           title: 'Categorias',
           headerTitle: 'Minhas Categorias',
+          headerShown: false,
         }}
       />
       <Tabs.Screen
@@ -115,6 +116,7 @@ export default function AppLayout() {
           href: null,
           title: 'Faturas',
           headerTitle: 'Faturas & Lembretes',
+          headerShown: false,
         }}
       />
       <Tabs.Screen
@@ -123,6 +125,7 @@ export default function AppLayout() {
           href: null,
           title: 'Investimentos',
           headerTitle: 'Investimentos & Simulações',
+          headerShown: false,
         }}
       />
     </Tabs>

@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
@@ -27,6 +28,7 @@ import { formatDateBR } from '../../utils/dates';
 import { playHaptic } from '../../utils/haptics';
 
 export default function InvestimentosScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { refreshKey, triggerRefresh } = useFinance();
@@ -110,11 +112,47 @@ export default function InvestimentosScreen() {
   const totalPortfolioCents = investments.reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
-    >
-      {/* AVISO OBRIGATÓRIO DE CONTEÚDO EDUCATIVO */}
+    <View style={styles.container}>
+      {/* Top Bar com Botão Voltar */}
+      <View style={[styles.topBarHeader, { paddingTop: Math.max(insets.top, 16) + 10 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            playHaptic.light();
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        </TouchableOpacity>
+
+        <View style={styles.topBarTextWrap}>
+          <Text style={styles.headerTitle}>Investimentos</Text>
+          <Text style={styles.headerSubtitle}>Simulações e carteira pessoal</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.addHeaderBtn}
+          onPress={() => {
+            playHaptic.medium();
+            setModalVisible(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={20} color="#FFF" />
+          <Text style={styles.addHeaderBtnText}>Ativo</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+      >
+        {/* AVISO OBRIGATÓRIO DE CONTEÚDO EDUCATIVO */}
       <View style={styles.disclaimerBanner}>
         <Ionicons name="information-circle" size={20} color={Colors.warning} style={styles.disclaimerIcon} />
         <View style={styles.disclaimerTextWrap}>
@@ -322,13 +360,64 @@ export default function InvestimentosScreen() {
         onSave={handleSaveInvestment}
       />
     </ScrollView>
-  );
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  topBarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: 12,
+  },
+  topBarTextWrap: {
+    flex: 1,
+  },
+  headerTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  addHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 4,
+  },
+  addHeaderBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  scroll: {
+    flex: 1,
   },
   scrollContent: {
     padding: 16,

@@ -417,7 +417,49 @@ export default function DashboardScreen() {
             <View style={[styles.actionIconWrap, { backgroundColor: Colors.primaryMuted }]}>
               <Ionicons name="add-circle-outline" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.actionText}>Novo Gasto</Text>
+            <Text style={styles.actionText} numberOfLines={1}>Novo Gasto</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              playHaptic.light();
+              router.push('/faturas');
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconWrap, { backgroundColor: Colors.warningBg }]}>
+              <Ionicons name="receipt-outline" size={20} color={Colors.warning} />
+            </View>
+            <Text style={styles.actionText} numberOfLines={1}>Faturas</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              playHaptic.light();
+              router.push('/investimentos');
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconWrap, { backgroundColor: `${Colors.cyan}20` }]}>
+              <Ionicons name="trending-up-outline" size={20} color={Colors.cyan} />
+            </View>
+            <Text style={styles.actionText} numberOfLines={1}>Investir</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              playHaptic.light();
+              router.push('/categorias');
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconWrap, { backgroundColor: `${Colors.purple}20` }]}>
+              <Ionicons name="pricetags-outline" size={20} color={Colors.purple} />
+            </View>
+            <Text style={styles.actionText} numberOfLines={1}>Categorias</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -431,35 +473,7 @@ export default function DashboardScreen() {
             <View style={[styles.actionIconWrap, { backgroundColor: '#8A05BE22' }]}>
               <Ionicons name="cloud-upload-outline" size={20} color="#A855F7" />
             </View>
-            <Text style={styles.actionText}>Importar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              playHaptic.light();
-              router.push('/(app)/faturas');
-            }}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.actionIconWrap, { backgroundColor: Colors.warningBg }]}>
-              <Ionicons name="receipt-outline" size={20} color={Colors.warning} />
-            </View>
-            <Text style={styles.actionText}>Faturas</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              playHaptic.light();
-              router.push('/(app)/investimentos');
-            }}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.actionIconWrap, { backgroundColor: `${Colors.cyan}20` }]}>
-              <Ionicons name="trending-up-outline" size={20} color={Colors.cyan} />
-            </View>
-            <Text style={styles.actionText}>Investir</Text>
+            <Text style={styles.actionText} numberOfLines={1}>Importar</Text>
           </TouchableOpacity>
         </View>
 
@@ -781,20 +795,21 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     alignItems: 'center',
-    marginHorizontal: 4,
+    marginHorizontal: 2,
   },
   actionIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 46,
+    height: 46,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   actionText: {
     color: Colors.textSecondary,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
+    textAlign: 'center',
   },
   recentSection: {
     marginTop: 20,
