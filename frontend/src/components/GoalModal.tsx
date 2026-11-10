@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, AvailableIcons, AvailableColors } from '../constants/theme';
 import { Category, GoalWithProgress } from '../db/queries';
+import { getTodayDateString } from '../utils/dates';
 
 interface GoalModalProps {
   visible: boolean;
@@ -21,29 +22,38 @@ interface GoalModalProps {
   onSave: (data: {
     id?: number;
     title: string;
-    period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'once';
     target_type: 'counter' | 'value' | 'boolean';
     target_value: number;
     unit: string;
     category_id?: number | null;
     color: string;
     icon: string;
+    is_recurring?: boolean | number;
+    deadline?: string | null;
+    points_reward?: number;
+    points_penalty?: number;
   }) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
   initialGoal?: GoalWithProgress | null;
   categories: Category[];
 }
 
-const SUGGESTIONS = [
-  { title: 'Treinar 5x na semana', period: 'weekly', target: 5, unit: 'vezes', icon: 'fitness-outline', color: '#10B981' },
-  { title: 'Beber 2.5L de água', period: 'daily', target: 2500, unit: 'ml', icon: 'water-outline', color: '#06B6D4' },
-  { title: 'Ler 12 livros no ano', period: 'yearly', target: 12, unit: 'livros', icon: 'book-outline', color: '#8B5CF6' },
-  { title: 'Estudar 1h por dia', period: 'daily', target: 60, unit: 'minutos', icon: 'school-outline', color: '#3B82F6' },
-  { title: 'Economizar R$ 1.000', period: 'monthly', target: 1000, unit: 'R$', icon: 'wallet-outline', color: '#F59E0B' },
-  { title: 'Correr 15km na semana', period: 'weekly', target: 15, unit: 'km', icon: 'bicycle-outline', color: '#EC4899' },
+const HABIT_SUGGESTIONS = [
+  { title: 'Treinar 5x na semana', period: 'weekly', target: 5, unit: 'vezes', icon: 'fitness-outline', color: '#10B981', is_recurring: true },
+  { title: 'Beber 2.5L de água', period: 'daily', target: 2500, unit: 'ml', icon: 'water-outline', color: '#06B6D4', is_recurring: true },
+  { title: 'Ler 12 livros no ano', period: 'yearly', target: 12, unit: 'livros', icon: 'book-outline', color: '#8B5CF6', is_recurring: true },
+  { title: 'Estudar 1h por dia', period: 'daily', target: 60, unit: 'minutos', icon: 'school-outline', color: '#3B82F6', is_recurring: true },
 ];
 
-const COMMON_UNITS = ['vezes', 'dias', 'km', 'litros', 'ml', 'páginas', 'livros', 'horas', 'minutos', 'R$'];
+const ONE_OFF_SUGGESTIONS = [
+  { title: 'Emagrecer 8 quilos', period: 'once', target: 8, unit: 'kg', icon: 'fitness-outline', color: '#EC4899', is_recurring: false, days: 60, reward: 150, penalty: 75 },
+  { title: 'Economizar R$ 5.000', period: 'once', target: 5000, unit: 'R$', icon: 'wallet-outline', color: '#10B981', is_recurring: false, days: 90, reward: 200, penalty: 100 },
+  { title: 'Correr maratona de 15km', period: 'once', target: 15, unit: 'km', icon: 'bicycle-outline', color: '#F59E0B', is_recurring: false, days: 45, reward: 120, penalty: 60 },
+  { title: 'Ler livro de 400 páginas', period: 'once', target: 400, unit: 'páginas', icon: 'book-outline', color: '#8B5CF6', is_recurring: false, days: 30, reward: 100, penalty: 50 },
+];
+
+const COMMON_UNITS = ['vezes', 'kg', 'dias', 'km', 'litros', 'ml', 'páginas', 'livros', 'horas', 'minutos', 'R$'];
 
 export const GoalModal: React.FC<GoalModalProps> = ({
   visible,
@@ -53,10 +63,14 @@ export const GoalModal: React.FC<GoalModalProps> = ({
   initialGoal,
   categories,
 }) => {
+  const [isRecurring, setIsRecurring] = useState(true);
   const [title, setTitle] = useState('');
-  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'once'>('weekly');
   const [targetValue, setTargetValue] = useState('5');
   const [unit, setUnit] = useState('vezes');
+  const [deadline, setDeadline] = useState('');
+  const [pointsReward, setPointsReward] = useState('100');
+  const [pointsPenalty, setPointsPenalty] = useState('50');
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [color, setColor] = useState(Colors.primary);
   const [icon, setIcon] = useState('fitness-outline');
@@ -64,31 +78,60 @@ export const GoalModal: React.FC<GoalModalProps> = ({
 
   useEffect(() => {
     if (initialGoal) {
+      const rec = initialGoal.is_recurring !== undefined ? Boolean(initialGoal.is_recurring) : initialGoal.period !== 'once';
+      setIsRecurring(rec);
       setTitle(initialGoal.title);
       setPeriod(initialGoal.period);
       setTargetValue(String(initialGoal.target_value));
       setUnit(initialGoal.unit);
+      setDeadline(initialGoal.deadline || '');
+      setPointsReward(String(initialGoal.points_reward || 100));
+      setPointsPenalty(String(initialGoal.points_penalty || 50));
       setCategoryId(initialGoal.category_id || null);
       setColor(initialGoal.color || Colors.primary);
       setIcon(initialGoal.icon || 'trophy-outline');
     } else {
+      setIsRecurring(true);
       setTitle('');
       setPeriod('weekly');
       setTargetValue('5');
       setUnit('vezes');
+
+      // Prazo padrão de 30 dias para desafios
+      const defaultDate = new Date();
+      defaultDate.setDate(defaultDate.getDate() + 30);
+      const dy = defaultDate.getFullYear();
+      const dm = String(defaultDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(defaultDate.getDate()).padStart(2, '0');
+      setDeadline(`${dy}-${dm}-${dd}`);
+
+      setPointsReward('100');
+      setPointsPenalty('50');
       setCategoryId(null);
       setColor(Colors.primary);
       setIcon('fitness-outline');
     }
   }, [initialGoal, visible]);
 
-  const handleApplySuggestion = (s: typeof SUGGESTIONS[0]) => {
+  const handleApplySuggestion = (s: any) => {
+    setIsRecurring(s.is_recurring);
     setTitle(s.title);
-    setPeriod(s.period as any);
+    setPeriod(s.period);
     setTargetValue(String(s.target));
     setUnit(s.unit);
     setIcon(s.icon);
     setColor(s.color);
+
+    if (!s.is_recurring && s.days) {
+      const d = new Date();
+      d.setDate(d.getDate() + s.days);
+      const dy = d.getFullYear();
+      const dm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      setDeadline(`${dy}-${dm}-${dd}`);
+      setPointsReward(String(s.reward || 100));
+      setPointsPenalty(String(s.penalty || 50));
+    }
   };
 
   const handleSave = async () => {
@@ -103,18 +146,29 @@ export const GoalModal: React.FC<GoalModalProps> = ({
       return;
     }
 
+    if (!isRecurring) {
+      if (!deadline.trim() || deadline.length !== 10) {
+        Alert.alert('Atenção', 'Informe uma data limite válida no formato AAAA-MM-DD para o desafio.');
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       await onSave({
         id: initialGoal ? initialGoal.id : undefined,
         title: title.trim(),
-        period,
+        period: isRecurring ? (period === 'once' ? 'weekly' : period) : 'once',
         target_type: 'counter',
         target_value: numericTarget,
         unit: unit.trim() || 'vezes',
         category_id: categoryId,
         color,
         icon,
+        is_recurring: isRecurring ? 1 : 0,
+        deadline: !isRecurring ? deadline.trim() : null,
+        points_reward: parseInt(pointsReward, 10) || 100,
+        points_penalty: parseInt(pointsPenalty, 10) || 50,
       });
       onClose();
     } catch (e: any) {
@@ -156,7 +210,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
-              {initialGoal ? 'Editar Meta' : 'Nova Meta / Hábito'}
+              {initialGoal ? 'Editar Meta' : 'Nova Meta / Desafio'}
             </Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={24} color={Colors.textMuted} />
@@ -164,12 +218,53 @@ export const GoalModal: React.FC<GoalModalProps> = ({
           </View>
 
           <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+            {/* Seletor de Tipo: Hábito Recorrente vs Meta Única */}
+            <View style={styles.typeSelectorRow}>
+              <TouchableOpacity
+                style={[styles.typeOptionBtn, isRecurring && styles.typeOptionBtnActive]}
+                onPress={() => {
+                  setIsRecurring(true);
+                  if (period === 'once') setPeriod('weekly');
+                }}
+              >
+                <Ionicons
+                  name="repeat-outline"
+                  size={16}
+                  color={isRecurring ? '#FFF' : Colors.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.typeOptionText, isRecurring && styles.typeOptionTextActive]}>
+                  Hábito Recorrente
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.typeOptionBtn, !isRecurring && styles.typeOptionBtnActive]}
+                onPress={() => {
+                  setIsRecurring(false);
+                  setPeriod('once');
+                }}
+              >
+                <Ionicons
+                  name="trophy-outline"
+                  size={16}
+                  color={!isRecurring ? '#FFF' : Colors.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.typeOptionText, !isRecurring && styles.typeOptionTextActive]}>
+                  Desafio com Prazo
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Sugestões Rápidas (Apenas ao criar) */}
             {!initialGoal && (
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Sugestões Rápidas</Text>
+                <Text style={styles.sectionLabel}>
+                  {isRecurring ? 'Sugestões de Hábitos' : 'Sugestões de Desafios'}
+                </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionsScroll}>
-                  {SUGGESTIONS.map((s, idx) => (
+                  {(isRecurring ? HABIT_SUGGESTIONS : ONE_OFF_SUGGESTIONS).map((s, idx) => (
                     <TouchableOpacity
                       key={idx}
                       style={[styles.suggestionChip, { borderColor: `${s.color}60` }]}
@@ -188,43 +283,89 @@ export const GoalModal: React.FC<GoalModalProps> = ({
               <Text style={styles.sectionLabel}>Objetivo / Título *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Ex: Treinar na academia, Beber água..."
+                placeholder={isRecurring ? "Ex: Treinar, Beber água, Meditar..." : "Ex: Emagrecer 8 quilos, Juntar R$ 5.000..."}
                 placeholderTextColor={Colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
               />
             </View>
 
-            {/* Frequência / Periodicidade */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Frequência de Ciclo *</Text>
-              <View style={styles.periodRow}>
-                {[
-                  { id: 'daily', label: 'Diária' },
-                  { id: 'weekly', label: 'Semanal' },
-                  { id: 'monthly', label: 'Mensal' },
-                  { id: 'yearly', label: 'Anual' },
-                ].map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.periodBtn,
-                      period === item.id && { backgroundColor: color, borderColor: color },
-                    ]}
-                    onPress={() => setPeriod(item.id as any)}
-                  >
-                    <Text
+            {/* Se for Recorrente: Frequência de Ciclo */}
+            {isRecurring ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Frequência de Ciclo *</Text>
+                <View style={styles.periodRow}>
+                  {[
+                    { id: 'daily', label: 'Diária' },
+                    { id: 'weekly', label: 'Semanal' },
+                    { id: 'monthly', label: 'Mensal' },
+                    { id: 'yearly', label: 'Anual' },
+                  ].map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
                       style={[
-                        styles.periodBtnText,
-                        period === item.id && { color: '#FFF', fontWeight: '700' },
+                        styles.periodBtn,
+                        period === item.id && { backgroundColor: color, borderColor: color },
                       ]}
+                      onPress={() => setPeriod(item.id as any)}
                     >
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.periodBtnText,
+                          period === item.id && { color: '#FFF', fontWeight: '700' },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : (
+              /* Se for Meta Única: Prazo e Gamificação de Pontos */
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Data Limite / Prazo (AAAA-MM-DD) *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: 2026-12-31"
+                  placeholderTextColor={Colors.textMuted}
+                  value={deadline}
+                  onChangeText={setDeadline}
+                />
+
+                <View style={[styles.targetRow, { marginTop: 12 }]}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={styles.sectionLabel}>Recompensa (Pontos)</Text>
+                    <View style={styles.pointsInputWrap}>
+                      <Ionicons name="star" size={16} color={Colors.warning} style={{ marginRight: 6 }} />
+                      <TextInput
+                        style={styles.pointsInput}
+                        placeholder="100"
+                        placeholderTextColor={Colors.textMuted}
+                        keyboardType="numeric"
+                        value={pointsReward}
+                        onChangeText={setPointsReward}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sectionLabel}>Penalidade (se expirar)</Text>
+                    <View style={styles.pointsInputWrap}>
+                      <Ionicons name="alert-circle" size={16} color={Colors.expense} style={{ marginRight: 6 }} />
+                      <TextInput
+                        style={styles.pointsInput}
+                        placeholder="50"
+                        placeholderTextColor={Colors.textMuted}
+                        keyboardType="numeric"
+                        value={pointsPenalty}
+                        onChangeText={setPointsPenalty}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
 
             {/* Alvo e Unidade */}
             <View style={styles.section}>
@@ -233,7 +374,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
                   <Text style={styles.sectionLabel}>Quantidade Alvo *</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Ex: 5"
+                    placeholder="Ex: 5 ou 8"
                     placeholderTextColor={Colors.textMuted}
                     keyboardType="numeric"
                     value={targetValue}
@@ -245,7 +386,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
                   <Text style={styles.sectionLabel}>Unidade de Medida</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="vezes, km, litros..."
+                    placeholder="kg, vezes, km..."
                     placeholderTextColor={Colors.textMuted}
                     value={unit}
                     onChangeText={setUnit}
@@ -380,7 +521,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
+    maxHeight: '92%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   header: {
@@ -395,6 +536,34 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: Colors.text,
     fontSize: 18,
+    fontWeight: '700',
+  },
+  typeSelectorRow: {
+    flexDirection: 'row',
+    marginTop: 16,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  typeOptionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  typeOptionBtnActive: {
+    backgroundColor: Colors.primary,
+  },
+  typeOptionText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  typeOptionTextActive: {
+    color: '#FFF',
     fontWeight: '700',
   },
   scroll: {
@@ -435,6 +604,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  pointsInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  pointsInput: {
+    flex: 1,
+    color: Colors.text,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontWeight: '700',
   },
   periodRow: {
     flexDirection: 'row',

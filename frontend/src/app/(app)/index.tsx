@@ -30,12 +30,14 @@ import {
   getGoalsWithProgress,
   toggleEventCompleted,
   incrementGoalProgress,
+  getUserScore,
   Transaction,
   MonthlySummary,
   CategoryExpense,
   WeeklyExpense,
   EventItem,
   GoalWithProgress,
+  UserScore,
 } from '../../db/queries';
 import { centsToBRL } from '../../utils/formatCurrency';
 import { formatDateBR, getTodayDateString, getDayLabel } from '../../utils/dates';
@@ -59,6 +61,13 @@ export default function DashboardScreen() {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [todayEvents, setTodayEvents] = useState<EventItem[]>([]);
   const [activeGoals, setActiveGoals] = useState<GoalWithProgress[]>([]);
+  const [userScore, setUserScore] = useState<UserScore>({
+    totalPoints: 100,
+    level: 1,
+    levelTitle: 'Aspirante',
+    nextLevelPoints: 200,
+    progressPercent: 50,
+  });
   const [refreshing, setRefreshing] = useState(false);
 
   // Modal de Transação
@@ -68,13 +77,14 @@ export default function DashboardScreen() {
   const loadDashboardData = useCallback(async () => {
     const userId = user?.id || 1;
     try {
-      const [sum, catExp, weekExp, recents, events, goals] = await Promise.all([
+      const [sum, catExp, weekExp, recents, events, goals, scoreData] = await Promise.all([
         getMonthlySummary(userId, selectedMonthKey),
         getExpensesByCategory(userId, selectedMonthKey),
         getWeeklyExpenses(userId, selectedMonthKey),
         getTransactions(userId, { monthKey: selectedMonthKey, limit: 5 }),
         getEventsForDay(userId, today),
         getGoalsWithProgress(userId),
+        getUserScore(userId),
       ]);
 
       setSummary(sum);
@@ -83,6 +93,7 @@ export default function DashboardScreen() {
       setRecentTransactions(recents);
       setTodayEvents(events);
       setActiveGoals(goals);
+      setUserScore(scoreData);
     } catch (e) {
       console.warn('Erro ao carregar dados do dashboard:', e);
     }
@@ -108,6 +119,7 @@ export default function DashboardScreen() {
   };
 
   const handleIncrementGoal = async (goal: GoalWithProgress, delta: number) => {
+    const userId = user?.id || 1;
     setActiveGoals((prev) =>
       prev.map((g) => {
         if (g.id !== goal.id) return g;
@@ -119,7 +131,8 @@ export default function DashboardScreen() {
         };
       })
     );
-    await incrementGoalProgress(goal.id, goal.period_key, delta, goal.target_value);
+    await incrementGoalProgress(userId, goal, delta);
+    loadDashboardData();
   };
 
   const handleOpenAdd = () => {
@@ -191,9 +204,20 @@ export default function DashboardScreen() {
             <Text style={styles.greetingTitle}>Olá, {user?.name || 'Igor'} 👋</Text>
             <Text style={styles.greetingSubtitle}>Seu painel de controle pessoal</Text>
           </View>
-          <View style={styles.todayPill}>
-            <Ionicons name="calendar-outline" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
-            <Text style={styles.todayPillText}>{dayOfWeek}, {formattedToday}</Text>
+          <View style={styles.headerPills}>
+            <TouchableOpacity
+              style={styles.pointsPill}
+              onPress={() => router.push('/(app)/metas')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="star" size={13} color={Colors.warning} style={{ marginRight: 4 }} />
+              <Text style={styles.pointsPillText}>{userScore.totalPoints} pts</Text>
+            </TouchableOpacity>
+
+            <View style={styles.todayPill}>
+              <Ionicons name="calendar-outline" size={13} color={Colors.primary} style={{ marginRight: 4 }} />
+              <Text style={styles.todayPillText}>{dayOfWeek}, {formattedToday}</Text>
+            </View>
           </View>
         </View>
 
@@ -524,6 +548,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  headerPills: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  pointsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  pointsPillText: {
+    color: Colors.warning,
+    fontSize: 12,
+    fontWeight: '800',
   },
   greetingTitle: {
     color: Colors.text,

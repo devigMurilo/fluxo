@@ -119,9 +119,11 @@ export function getWeekKey(dateInput?: Date | string): string {
  * - 'yearly': 'AAAA'
  */
 export function getPeriodKey(
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly',
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'once',
   dateInput?: Date | string
 ): string {
+  if (period === 'once') return 'once';
+
   const d = dateInput ? (typeof dateInput === 'string' ? new Date(dateInput + 'T12:00:00') : new Date(dateInput)) : new Date();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -142,7 +144,7 @@ export function getPeriodKey(
 /**
  * Formata um rótulo legível para o período da meta.
  */
-export function formatPeriodLabel(period: 'daily' | 'weekly' | 'monthly' | 'yearly'): string {
+export function formatPeriodLabel(period: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'once'): string {
   switch (period) {
     case 'daily':
       return 'Diária';
@@ -152,7 +154,26 @@ export function formatPeriodLabel(period: 'daily' | 'weekly' | 'monthly' | 'year
       return 'Mensal';
     case 'yearly':
       return 'Anual';
+    case 'once':
+      return 'Desafio com Prazo';
   }
+}
+
+/**
+ * Calcula a quantidade de dias restantes até uma data alvo (AAAA-MM-DD).
+ * Retorna positivo se no futuro, 0 se hoje, negativo se no passado.
+ */
+export function getDaysRemaining(targetDateStr?: string | null): number | null {
+  if (!targetDateStr) return null;
+  const todayStr = getTodayDateString();
+  const [ty, tm, td] = todayStr.split('-').map(Number);
+  const [gy, gm, gd] = targetDateStr.split('-').map(Number);
+
+  const tDate = new Date(ty, tm - 1, td, 12, 0, 0);
+  const gDate = new Date(gy, gm - 1, gd, 12, 0, 0);
+
+  const diffTime = gDate.getTime() - tDate.getTime();
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
 }
 
 /**

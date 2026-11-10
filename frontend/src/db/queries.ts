@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { getDatabase, webStorage } from './database';
 import { CategoryPresets } from '../constants/theme';
-import { getPeriodKey } from '../utils/dates';
+import { getPeriodKey, getDaysRemaining, getTodayDateString } from '../utils/dates';
 
 export interface Category {
   id: number;
@@ -34,14 +34,20 @@ export interface Goal {
   id: number;
   user_id: number;
   title: string;
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'once';
   target_type: 'counter' | 'value' | 'boolean';
   target_value: number;
-  unit: string; // 'vezes', 'dias', 'km', 'litros', 'páginas', 'R$'
+  unit: string; // 'vezes', 'dias', 'km', 'litros', 'páginas', 'R$', 'kg'
   category_id?: number | null;
   color: string;
   icon: string;
   is_active: boolean | number;
+  is_recurring: boolean | number; // 1 = hábito recorrente, 0 = meta única/desafio
+  deadline?: string | null; // AAAA-MM-DD
+  points_reward: number; // Pontos ganhos se bater (padrão: 100)
+  points_penalty: number; // Pontos perdidos se expirar (padrão: 50)
+  status: 'active' | 'completed' | 'failed';
+  completed_at?: string | null;
   created_at?: string;
   category_name?: string | null;
 }
@@ -50,6 +56,25 @@ export interface GoalWithProgress extends Goal {
   period_key: string;
   current_value: number;
   completed: boolean;
+  days_remaining?: number | null;
+  is_expired?: boolean;
+}
+
+export interface ScoreLog {
+  id: number;
+  user_id: number;
+  points: number; // +100, -50
+  reason: string;
+  goal_id?: number | null;
+  created_at: string;
+}
+
+export interface UserScore {
+  totalPoints: number;
+  level: number;
+  levelTitle: string;
+  nextLevelPoints: number;
+  progressPercent: number;
 }
 
 export interface Transaction {
@@ -990,13 +1015,182 @@ export async function deleteEvent(userId: number, id: number): Promise<void> {
 }
 
 // ----------------------------------------------------
+// GAMIFICAÇÃO & PONTUAÇÃO DO USUÁRIO
+// ----------------------------------------------------
+
+export async function getUserScore(userId: number): Promise<UserScore> {
+  const db = await getDatabase();
+
+  if (Platform.OS === 'web') {
+    const logs = webStorage.data.score_logs || [];
+    const userLogs = logs.filter((l: any) => l.user_id === userId);
+    let totalPoints = userLogs.reduce((acc: number, l: any) => acc + (l.points || 0), 100); // 100 pontos iniciais
+    if (totalPoints < 0) totalPoints = 0;
+
+    return calculateUserLevel(totalPoints);
+  }
+
+  const row = (await db.getFirstAsync(
+    `SELECT COALESCE(SUM(points), 0) as total FROM score_logs WHERE user_id = ?`,
+    [userId]
+  )) as { total: number } | null;
+
+  // Garante pelo menos 100 pontos iniciais para incentivar o usuário
+  const pointsLogged = row ? row.total : 0;
+  const countRow = (await db.getFirstAsync(
+    `SELECT COUNT(*) as count FROM score_logs WHERE user_id = ?`,
+    [userId]
+  )) as { count: number } | null;
+
+  let totalPoints = pointsLogged;
+  if (!countRow || countRow.count === 0) {
+    // Registra bônus inicial de boas-vindas
+    await addScoreLog(userId, 100, 'Bônus de boas-vindas ao Life OS 🎉');
+    totalPoints = 100;
+  }
+
+  if (totalPoints < 0) totalPoints = 0;
+  return calculateUserLevel(totalPoints);
+}
+
+function calculateUserLevel(totalPoints: number): UserScore {
+  if (totalPoints < 200) {
+    return {
+      totalPoints,
+      level: 1,
+      levelTitle: 'Aspirante',
+      nextLevelPoints: 200,
+      progressPercent: Math.round((totalPoints / 200) * 100),
+    };
+  } else if (totalPoints < 500) {
+    return {
+      totalPoints,
+      level: 2,
+      levelTitle: 'Disciplinado',
+      nextLevelPoints: 500,
+      progressPercent: Math.round(((totalPoints - 200) / 300) * 100),
+    };
+  } else if (totalPoints < 1000) {
+    return {
+      totalPoints,
+      level: 3,
+      levelTitle: 'Focado',
+      nextLevelPoints: 1000,
+      progressPercent: Math.round(((totalPoints - 500) / 500) * 100),
+    };
+  } else if (totalPoints < 2000) {
+    return {
+      totalPoints,
+      level: 4,
+      levelTitle: 'Determinado',
+      nextLevelPoints: 2000,
+      progressPercent: Math.round(((totalPoints - 1000) / 1000) * 100),
+    };
+  } else {
+    return {
+      totalPoints,
+      level: 5,
+      levelTitle: 'Mestre da Consistência',
+      nextLevelPoints: 5000,
+      progressPercent: Math.min(100, Math.round(((totalPoints - 2000) / 3000) * 100)),
+    };
+  }
+}
+
+export async function addScoreLog(
+  userId: number,
+  points: number,
+  reason: string,
+  goalId?: number | null
+): Promise<void> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.score_logs || [];
+    list.push({
+      id: list.length + 1,
+      user_id: userId,
+      points,
+      reason,
+      goal_id: goalId || null,
+      created_at: new Date().toISOString(),
+    });
+    webStorage.data.score_logs = list;
+    webStorage.save();
+    return;
+  }
+
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT INTO score_logs (user_id, points, reason, goal_id) VALUES (?, ?, ?, ?)`,
+    [userId, points, reason, goalId || null]
+  );
+}
+
+export async function getScoreLogs(userId: number, limit: number = 20): Promise<ScoreLog[]> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.score_logs || [];
+    return list
+      .filter((l: any) => l.user_id === userId)
+      .reverse()
+      .slice(0, limit);
+  }
+
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `SELECT * FROM score_logs WHERE user_id = ? ORDER BY id DESC LIMIT ?`,
+    [userId, limit]
+  );
+  return rows as ScoreLog[];
+}
+
+export async function checkAndExpireGoals(userId: number): Promise<void> {
+  const db = await getDatabase();
+  const today = getTodayDateString();
+
+  if (Platform.OS === 'web') {
+    const goalsList = webStorage.data.goals || [];
+    for (const g of goalsList) {
+      if (
+        g.user_id === userId &&
+        g.is_active &&
+        !g.is_recurring &&
+        g.status === 'active' &&
+        g.deadline &&
+        g.deadline < today
+      ) {
+        g.status = 'failed';
+        const penalty = g.points_penalty || 50;
+        await addScoreLog(userId, -penalty, `Prazo expirou: ${g.title} (-${penalty} pts)`, g.id);
+      }
+    }
+    webStorage.save();
+    return;
+  }
+
+  const expiredGoals = (await db.getAllAsync(
+    `SELECT * FROM goals
+     WHERE user_id = ? AND is_active = 1 AND is_recurring = 0 AND status = 'active'
+       AND deadline IS NOT NULL AND deadline < ?`,
+    [userId, today]
+  )) as any[];
+
+  for (const g of expiredGoals) {
+    await db.runAsync(`UPDATE goals SET status = 'failed' WHERE id = ?`, [g.id]);
+    const penalty = g.points_penalty || 50;
+    await addScoreLog(userId, -penalty, `Prazo expirou: ${g.title} (-${penalty} pts)`, g.id);
+  }
+}
+
+// ----------------------------------------------------
 // METAS & HÁBITOS
 // ----------------------------------------------------
 
 export async function getGoalsWithProgress(
   userId: number,
-  periodFilter?: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  periodFilter?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'once'
 ): Promise<GoalWithProgress[]> {
+  // Verifica automaticamente se alguma meta com prazo expirou
+  await checkAndExpireGoals(userId);
+
   const db = await getDatabase();
 
   if (Platform.OS === 'web') {
@@ -1015,14 +1209,21 @@ export async function getGoalsWithProgress(
       const log = logsList.find((l: any) => l.goal_id === g.id && l.period_key === pKey);
       const cat = categories.find((c: any) => c.id === g.category_id);
       const current_value = log ? log.current_value : 0;
-      const completed = log ? Boolean(log.completed) : current_value >= g.target_value;
+      const completed = g.status === 'completed' || (log ? Boolean(log.completed) : current_value >= g.target_value);
+      const days_remaining = getDaysRemaining(g.deadline);
 
       return {
         ...g,
+        is_recurring: g.is_recurring !== undefined ? Boolean(g.is_recurring) : g.period !== 'once',
+        status: g.status || (completed ? 'completed' : 'active'),
+        points_reward: g.points_reward || 100,
+        points_penalty: g.points_penalty || 50,
         category_name: cat ? cat.name : null,
         period_key: pKey,
         current_value,
         completed,
+        days_remaining,
+        is_expired: g.status === 'failed' || (days_remaining !== null && days_remaining < 0 && !completed),
       };
     });
   }
@@ -1040,11 +1241,10 @@ export async function getGoalsWithProgress(
     params.push(periodFilter);
   }
 
-  query += ` ORDER BY g.id ASC`;
+  query += ` ORDER BY g.is_recurring ASC, g.id ASC`;
 
   const rows = (await db.getAllAsync(query, params)) as any[];
 
-  // Para cada meta, busca o log correspondente à chave atual do seu período
   const results: GoalWithProgress[] = [];
 
   for (const row of rows) {
@@ -1055,13 +1255,20 @@ export async function getGoalsWithProgress(
     )) as { current_value: number; completed: number } | null;
 
     const current_value = logRow ? logRow.current_value : 0;
-    const completed = logRow ? Boolean(logRow.completed) : current_value >= row.target_value;
+    const completed = row.status === 'completed' || (logRow ? Boolean(logRow.completed) : current_value >= row.target_value);
+    const days_remaining = getDaysRemaining(row.deadline);
 
     results.push({
       ...row,
+      is_recurring: row.is_recurring !== undefined ? Boolean(row.is_recurring) : row.period !== 'once',
+      status: row.status || (completed ? 'completed' : 'active'),
+      points_reward: row.points_reward || 100,
+      points_penalty: row.points_penalty || 50,
       period_key: pKey,
       current_value,
       completed,
+      days_remaining,
+      is_expired: row.status === 'failed' || (days_remaining !== null && days_remaining < 0 && !completed),
     });
   }
 
@@ -1072,15 +1279,23 @@ export async function createGoal(
   userId: number,
   data: {
     title: string;
-    period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'once';
     target_type: 'counter' | 'value' | 'boolean';
     target_value: number;
     unit: string;
     category_id?: number | null;
     color: string;
     icon: string;
+    is_recurring?: boolean | number;
+    deadline?: string | null;
+    points_reward?: number;
+    points_penalty?: number;
   }
 ): Promise<number> {
+  const isRecurring = data.is_recurring !== undefined ? (data.is_recurring ? 1 : 0) : data.period === 'once' ? 0 : 1;
+  const pointsReward = data.points_reward ?? 100;
+  const pointsPenalty = data.points_penalty ?? 50;
+
   if (Platform.OS === 'web') {
     const list = webStorage.data.goals || [];
     const id = list.length > 0 ? Math.max(...list.map((g: any) => g.id)) + 1 : 1;
@@ -1088,6 +1303,11 @@ export async function createGoal(
       id,
       user_id: userId,
       ...data,
+      is_recurring: isRecurring,
+      deadline: data.deadline || null,
+      points_reward: pointsReward,
+      points_penalty: pointsPenalty,
+      status: 'active',
       is_active: 1,
       created_at: new Date().toISOString(),
     });
@@ -1098,8 +1318,10 @@ export async function createGoal(
 
   const db = await getDatabase();
   const result = await db.runAsync(
-    `INSERT INTO goals (user_id, title, period, target_type, target_value, unit, category_id, color, icon)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO goals (
+      user_id, title, period, target_type, target_value, unit,
+      category_id, color, icon, is_recurring, deadline, points_reward, points_penalty, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
     [
       userId,
       data.title,
@@ -1110,6 +1332,10 @@ export async function createGoal(
       data.category_id || null,
       data.color,
       data.icon,
+      isRecurring,
+      data.deadline || null,
+      pointsReward,
+      pointsPenalty,
     ]
   );
   return result.lastInsertRowId;
@@ -1144,6 +1370,12 @@ export async function updateGoal(
   if (data.color !== undefined) { fields.push('color = ?'); params.push(data.color); }
   if (data.icon !== undefined) { fields.push('icon = ?'); params.push(data.icon); }
   if (data.is_active !== undefined) { fields.push('is_active = ?'); params.push(data.is_active ? 1 : 0); }
+  if (data.is_recurring !== undefined) { fields.push('is_recurring = ?'); params.push(data.is_recurring ? 1 : 0); }
+  if (data.deadline !== undefined) { fields.push('deadline = ?'); params.push(data.deadline); }
+  if (data.points_reward !== undefined) { fields.push('points_reward = ?'); params.push(data.points_reward); }
+  if (data.points_penalty !== undefined) { fields.push('points_penalty = ?'); params.push(data.points_penalty); }
+  if (data.status !== undefined) { fields.push('status = ?'); params.push(data.status); }
+  if (data.completed_at !== undefined) { fields.push('completed_at = ?'); params.push(data.completed_at); }
 
   if (fields.length === 0) return;
 
@@ -1169,44 +1401,24 @@ export async function deleteGoal(userId: number, id: number): Promise<void> {
 }
 
 export async function incrementGoalProgress(
-  goalId: number,
-  periodKey: string,
-  delta: number,
-  targetValue: number
-): Promise<{ currentValue: number; completed: boolean }> {
-  if (Platform.OS === 'web') {
-    const logs = webStorage.data.goal_logs || [];
-    let log = logs.find((l: any) => l.goal_id === goalId && l.period_key === periodKey);
-    let val = (log ? log.current_value : 0) + delta;
-    if (val < 0) val = 0;
-    const completed = val >= targetValue;
-
-    if (!log) {
-      logs.push({
-        id: logs.length + 1,
-        goal_id: goalId,
-        period_key: periodKey,
-        current_value: val,
-        completed: completed ? 1 : 0,
-      });
-    } else {
-      log.current_value = val;
-      log.completed = completed ? 1 : 0;
-    }
-    webStorage.data.goal_logs = logs;
-    webStorage.save();
-    return { currentValue: val, completed };
-  }
+  userId: number,
+  goal: GoalWithProgress,
+  delta: number
+): Promise<{ currentValue: number; completed: boolean; pointsAwarded?: number }> {
+  const goalId = goal.id;
+  const periodKey = goal.period_key;
+  const targetValue = goal.target_value;
 
   const db = await getDatabase();
   const existing = (await db.getFirstAsync(
-    `SELECT current_value FROM goal_logs WHERE goal_id = ? AND period_key = ?`,
+    `SELECT current_value, completed FROM goal_logs WHERE goal_id = ? AND period_key = ?`,
     [goalId, periodKey]
-  )) as { current_value: number } | null;
+  )) as { current_value: number; completed: number } | null;
 
   let val = (existing ? existing.current_value : 0) + delta;
   if (val < 0) val = 0;
   const completed = val >= targetValue;
+  const wasCompletedBefore = existing ? Boolean(existing.completed) : false;
 
   await db.runAsync(
     `INSERT INTO goal_logs (goal_id, period_key, current_value, completed, updated_at)
@@ -1218,7 +1430,36 @@ export async function incrementGoalProgress(
     [goalId, periodKey, val, completed ? 1 : 0, val, completed ? 1 : 0]
   );
 
-  return { currentValue: val, completed };
+  let pointsAwarded = 0;
+
+  // Se a meta foi batida pela primeira vez agora!
+  if (completed && !wasCompletedBefore) {
+    if (!goal.is_recurring || goal.period === 'once') {
+      // Meta única com prazo: recompensa total estipulada
+      pointsAwarded = goal.points_reward || 100;
+      await db.runAsync(
+        `UPDATE goals SET status = 'completed', completed_at = datetime('now') WHERE id = ?`,
+        [goalId]
+      );
+      await addScoreLog(
+        userId,
+        pointsAwarded,
+        `Meta alcançada: ${goal.title} 🏆 (+${pointsAwarded} pts)`,
+        goalId
+      );
+    } else {
+      // Hábito recorrente concluído no ciclo
+      pointsAwarded = 25;
+      await addScoreLog(
+        userId,
+        pointsAwarded,
+        `Ciclo concluído: ${goal.title} ⭐ (+${pointsAwarded} pts)`,
+        goalId
+      );
+    }
+  }
+
+  return { currentValue: val, completed, pointsAwarded };
 }
 
 export async function setGoalProgress(
@@ -1229,26 +1470,6 @@ export async function setGoalProgress(
 ): Promise<{ currentValue: number; completed: boolean }> {
   const val = Math.max(0, value);
   const completed = val >= targetValue;
-
-  if (Platform.OS === 'web') {
-    const logs = webStorage.data.goal_logs || [];
-    let log = logs.find((l: any) => l.goal_id === goalId && l.period_key === periodKey);
-    if (!log) {
-      logs.push({
-        id: logs.length + 1,
-        goal_id: goalId,
-        period_key: periodKey,
-        current_value: val,
-        completed: completed ? 1 : 0,
-      });
-    } else {
-      log.current_value = val;
-      log.completed = completed ? 1 : 0;
-    }
-    webStorage.data.goal_logs = logs;
-    webStorage.save();
-    return { currentValue: val, completed };
-  }
 
   const db = await getDatabase();
   await db.runAsync(

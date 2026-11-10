@@ -52,6 +52,7 @@ export async function initDatabase(): Promise<void> {
     if (!webStorage.data.events) webStorage.data.events = [];
     if (!webStorage.data.goals) webStorage.data.goals = [];
     if (!webStorage.data.goal_logs) webStorage.data.goal_logs = [];
+    if (!webStorage.data.score_logs) webStorage.data.score_logs = [];
     webStorage.save();
     return;
   }
@@ -141,6 +142,16 @@ export async function initDatabase(): Promise<void> {
       FOREIGN KEY (goal_id) REFERENCES goals (id) ON DELETE CASCADE,
       UNIQUE(goal_id, period_key)
     );
+
+    CREATE TABLE IF NOT EXISTS score_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      points INTEGER NOT NULL, -- Positivo (recompensa) ou Negativo (penalidade)
+      reason TEXT NOT NULL,
+      goal_id INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (goal_id) REFERENCES goals (id) ON DELETE SET NULL
+    );
   `);
 
   // Migrações seguras para suporte a extratos bancários (OFX / Open Finance)
@@ -186,6 +197,29 @@ export async function initDatabase(): Promise<void> {
   } catch (e) {
     // Índice já existe
   }
+
+  // Migrações para suporte a Metas Únicas / Desafios e Gamificação de Pontos
+  try {
+    await db.execAsync(`ALTER TABLE goals ADD COLUMN is_recurring INTEGER DEFAULT 1;`);
+  } catch (e) {}
+  try {
+    await db.execAsync(`ALTER TABLE goals ADD COLUMN deadline TEXT;`);
+  } catch (e) {}
+  try {
+    await db.execAsync(`ALTER TABLE goals ADD COLUMN points_reward INTEGER DEFAULT 100;`);
+  } catch (e) {}
+  try {
+    await db.execAsync(`ALTER TABLE goals ADD COLUMN points_penalty INTEGER DEFAULT 50;`);
+  } catch (e) {}
+  try {
+    await db.execAsync(`ALTER TABLE goals ADD COLUMN status TEXT DEFAULT 'active';`);
+  } catch (e) {}
+  try {
+    await db.execAsync(`ALTER TABLE goals ADD COLUMN completed_at TEXT;`);
+  } catch (e) {}
+  try {
+    await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_score_logs_user ON score_logs (user_id);`);
+  } catch (e) {}
 }
 
 export { webStorage };
