@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,19 +14,19 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
-import { Colors } from '../../constants/theme';
-import { useAuth } from '../../context/AuthContext';
-import { useFinance } from '../../context/FinanceContext';
-import { parseBankStatement, ParsedTransaction } from '../../services/ofxParser';
-import { suggestCategory } from '../../services/autoCategorizer';
+import { Colors } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
+import { useFinance } from '../context/FinanceContext';
+import { parseBankStatement, ParsedTransaction } from '../services/ofxParser';
+import { suggestCategory } from '../services/autoCategorizer';
 import {
   getExistingFitids,
   importBankTransactions,
   Category,
   BankImportPayload,
-} from '../../db/queries';
-import { centsToBRL } from '../../utils/formatCurrency';
-import { formatDateBR } from '../../utils/dates';
+} from '../db/queries';
+import { centsToBRL } from '../utils/formatCurrency';
+import { formatDateBR } from '../utils/dates';
 
 interface UIImportItem extends ParsedTransaction {
   selected: boolean;
@@ -53,12 +53,10 @@ export default function ImportarExtratoScreen() {
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
 
   const handlePickDocument = async () => {
-    if (!user) return;
-
     try {
       setParsing(true);
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['*/*'],
+        type: '*/*',
         copyToCacheDirectory: true,
       });
 
@@ -99,8 +97,9 @@ export default function ImportarExtratoScreen() {
 
       setDetectedBank(statement.bankName);
 
+      const userId = user?.id || 1;
       // Carrega FITIDs existentes para identificar duplicatas
-      const existingFitids = await getExistingFitids(user.id);
+      const existingFitids = await getExistingFitids(userId);
 
       // Monta os itens com auto-categorização inteligente e checagem de duplicatas
       const items: UIImportItem[] = statement.transactions.map((t) => {
@@ -169,7 +168,7 @@ export default function ImportarExtratoScreen() {
   };
 
   const handleConfirmImport = async () => {
-    if (!user) return;
+    const userId = user?.id || 1;
 
     const selectedItems = importItems.filter((i) => i.selected);
     if (selectedItems.length === 0) {
@@ -191,7 +190,7 @@ export default function ImportarExtratoScreen() {
         syncSource: 'ofx',
       }));
 
-      const result = await importBankTransactions(user.id, payload);
+      const result = await importBankTransactions(userId, payload);
 
       triggerRefresh();
 
@@ -233,7 +232,13 @@ export default function ImportarExtratoScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/(app)/transacoes');
+            }
+          }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
@@ -495,7 +500,7 @@ export default function ImportarExtratoScreen() {
 
           {/* Lista de Transações */}
           <ScrollView style={styles.itemsScroll} contentContainerStyle={{ paddingBottom: 100 }}>
-            {filteredList.map((item, originalIndex) => {
+            {filteredList.map((item) => {
               const realIndex = importItems.findIndex((i) => i.id === item.id);
               const isIncome = item.type === 'receita';
 
