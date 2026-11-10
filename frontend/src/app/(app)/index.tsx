@@ -26,7 +26,7 @@ import {
   addTransaction,
   updateTransaction,
   deleteTransaction,
-  getEventsForDay,
+  getUpcomingMonthEvents,
   getGoalsWithProgress,
   toggleEventCompleted,
   incrementGoalProgress,
@@ -59,7 +59,7 @@ export default function DashboardScreen() {
   const [categoryExpenses, setCategoryExpenses] = useState<CategoryExpense[]>([]);
   const [weeklyExpenses, setWeeklyExpenses] = useState<WeeklyExpense[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
-  const [todayEvents, setTodayEvents] = useState<EventItem[]>([]);
+  const [monthEvents, setMonthEvents] = useState<EventItem[]>([]);
   const [activeGoals, setActiveGoals] = useState<GoalWithProgress[]>([]);
   const [userScore, setUserScore] = useState<UserScore>({
     totalPoints: 100,
@@ -82,7 +82,7 @@ export default function DashboardScreen() {
         getExpensesByCategory(userId, selectedMonthKey),
         getWeeklyExpenses(userId, selectedMonthKey),
         getTransactions(userId, { monthKey: selectedMonthKey, limit: 5 }),
-        getEventsForDay(userId, today),
+        getUpcomingMonthEvents(userId, today, 3),
         getGoalsWithProgress(userId),
         getUserScore(userId),
       ]);
@@ -91,7 +91,7 @@ export default function DashboardScreen() {
       setCategoryExpenses(catExp);
       setWeeklyExpenses(weekExp);
       setRecentTransactions(recents);
-      setTodayEvents(events);
+      setMonthEvents(events);
       setActiveGoals(goals);
       setUserScore(scoreData);
     } catch (e) {
@@ -112,7 +112,7 @@ export default function DashboardScreen() {
   const handleToggleEvent = async (ev: EventItem) => {
     const userId = user?.id || 1;
     const newStatus = !ev.is_completed;
-    setTodayEvents((prev) =>
+    setMonthEvents((prev) =>
       prev.map((e) => (e.id === ev.id ? { ...e, is_completed: newStatus } : e))
     );
     await toggleEventCompleted(userId, ev.id, newStatus);
@@ -222,22 +222,23 @@ export default function DashboardScreen() {
         </View>
 
         {/* ==================================================== */}
-        {/* COMPROMISSOS DE HOJE                                 */}
+        {/* COMPROMISSOS DO MÊS                                  */}
         {/* ==================================================== */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="calendar" size={18} color={Colors.info} style={{ marginRight: 6 }} />
-            <Text style={styles.sectionTitle}>Compromissos de Hoje</Text>
+            <Text style={styles.sectionTitle}>Compromissos do Mês</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/(app)/calendario')}>
             <Text style={styles.seeAllText}>Ver agenda</Text>
           </TouchableOpacity>
         </View>
 
-        {todayEvents.length > 0 ? (
+        {monthEvents.length > 0 ? (
           <View style={styles.eventsContainer}>
-            {todayEvents.map((ev) => {
+            {monthEvents.map((ev) => {
               const isCompleted = Boolean(ev.is_completed);
+              const dateLabel = ev.date === today ? 'Hoje' : formatDateBR(ev.date, true);
               return (
                 <View key={ev.id} style={[styles.eventItem, isCompleted && styles.eventItemCompleted]}>
                   <TouchableOpacity
@@ -260,7 +261,7 @@ export default function DashboardScreen() {
                       {ev.title}
                     </Text>
                     <Text style={styles.eventTime}>
-                      {ev.time ? ev.time : 'Dia todo'}
+                      {dateLabel} • {ev.time ? ev.time : 'Dia todo'}
                       {ev.category_name ? ` • ${ev.category_name}` : ''}
                     </Text>
                   </View>
@@ -279,7 +280,7 @@ export default function DashboardScreen() {
             <View style={styles.emptyBannerLeft}>
               <Ionicons name="sunny-outline" size={24} color={Colors.warning} />
               <View style={{ marginLeft: 10 }}>
-                <Text style={styles.emptyBannerTitle}>Nenhum compromisso agendado para hoje</Text>
+                <Text style={styles.emptyBannerTitle}>Nenhum compromisso agendado para este mês</Text>
                 <Text style={styles.emptyBannerSub}>Toque para agendar um evento ou rotina</Text>
               </View>
             </View>

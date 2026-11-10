@@ -914,6 +914,29 @@ export async function getEventsForMonth(userId: number, yearMonth: string): Prom
   }));
 }
 
+export async function getUpcomingMonthEvents(
+  userId: number,
+  todayStr: string,
+  limit: number = 3
+): Promise<EventItem[]> {
+  const currentMonth = todayStr.slice(0, 7); // 'AAAA-MM'
+  const allMonthEvents = await getEventsForMonth(userId, currentMonth);
+
+  if (allMonthEvents.length === 0) return [];
+
+  // Prioriza eventos de hoje em diante (ordenados cronologicamente)
+  const fromToday = allMonthEvents.filter((e) => e.date >= todayStr);
+
+  if (fromToday.length >= limit) {
+    return fromToday.slice(0, limit);
+  }
+
+  // Se a partir de hoje tiver menos de 3, complementa com outros eventos do mês para sempre exibir até 3
+  const beforeToday = allMonthEvents.filter((e) => e.date < todayStr);
+  const combined = [...fromToday, ...beforeToday];
+  return combined.slice(0, limit);
+}
+
 export async function createEvent(
   userId: number,
   data: {
