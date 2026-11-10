@@ -2,14 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
 import { Colors } from '../../constants/theme';
@@ -24,9 +25,11 @@ import {
 } from '../../db/queries';
 import { centsToBRL } from '../../utils/formatCurrency';
 import { formatDateBR } from '../../utils/dates';
+import { playHaptic } from '../../utils/haptics';
 
 export default function TransacoesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { selectedMonthKey, setSelectedMonthKey, categories, refreshKey, triggerRefresh } =
     useFinance();
@@ -72,11 +75,13 @@ export default function TransacoesScreen() {
   }, 0);
 
   const handleOpenAdd = () => {
+    playHaptic.medium();
     setTransactionToEdit(null);
     setModalVisible(true);
   };
 
   const handleOpenEdit = (t: Transaction) => {
+    playHaptic.light();
     setTransactionToEdit(t);
     setModalVisible(true);
   };
@@ -89,6 +94,7 @@ export default function TransacoesScreen() {
     description: string;
   }) => {
     if (!user) return;
+    playHaptic.success();
     if (transactionToEdit) {
       await updateTransaction(
         user.id,
@@ -114,6 +120,7 @@ export default function TransacoesScreen() {
 
   const handleDeleteTransaction = async (id: number) => {
     if (!user) return;
+    playHaptic.warning();
     await deleteTransaction(user.id, id);
     triggerRefresh();
   };
@@ -152,7 +159,10 @@ export default function TransacoesScreen() {
               <TouchableOpacity
                 key={tab}
                 style={[styles.filterTab, isSelected && styles.filterTabActive]}
-                onPress={() => setFilterType(tab)}
+                onPress={() => {
+                  playHaptic.selection();
+                  setFilterType(tab);
+                }}
               >
                 <Text
                   style={[
@@ -186,7 +196,10 @@ export default function TransacoesScreen() {
           <View style={styles.actionButtonsRow}>
             <TouchableOpacity
               style={styles.importBtn}
-              onPress={() => router.push('/importar-extrato')}
+              onPress={() => {
+                playHaptic.light();
+                router.push('/importar-extrato');
+              }}
               activeOpacity={0.7}
             >
               <Ionicons name="cloud-upload-outline" size={14} color="#FFFFFF" />
@@ -195,7 +208,10 @@ export default function TransacoesScreen() {
 
             <TouchableOpacity
               style={styles.manageCatBtn}
-              onPress={() => router.push('/categorias')}
+              onPress={() => {
+                playHaptic.light();
+                router.push('/categorias');
+              }}
               activeOpacity={0.7}
             >
               <Ionicons name="pricetags-outline" size={14} color={Colors.primary} />
@@ -205,16 +221,16 @@ export default function TransacoesScreen() {
         </View>
       </View>
 
-      {/* Lista */}
+      {/* Lista de Alta Performance com FlashList */}
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : (
-        <FlatList
+        <FlashList
           data={filteredTransactions}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 120 }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -273,8 +289,12 @@ export default function TransacoesScreen() {
         />
       )}
 
-      {/* Botão Flutuante */}
-      <TouchableOpacity style={styles.fab} onPress={handleOpenAdd} activeOpacity={0.85}>
+      {/* Botão Flutuante (Posicionado com margem de segurança da barra inferior) */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: Math.max(insets.bottom, 16) + 16 }]}
+        onPress={handleOpenAdd}
+        activeOpacity={0.85}
+      >
         <Ionicons name="add" size={28} color="#FFF" />
       </TouchableOpacity>
 

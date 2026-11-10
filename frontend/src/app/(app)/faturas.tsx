@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
 import { Colors } from '../../constants/theme';
@@ -23,8 +24,10 @@ import {
 } from '../../db/queries';
 import { scheduleBillNotification, cancelNotification } from '../../services/notifications';
 import { centsToBRL } from '../../utils/formatCurrency';
+import { playHaptic } from '../../utils/haptics';
 
 export default function FaturasScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { selectedMonthKey, setSelectedMonthKey, refreshKey, triggerRefresh } = useFinance();
 
@@ -55,17 +58,24 @@ export default function FaturasScreen() {
   const handleTogglePaid = async (bill: Bill) => {
     if (!user) return;
     const currentPaid = isBillPaid(bill);
+    if (!currentPaid) {
+      playHaptic.success();
+    } else {
+      playHaptic.light();
+    }
     await toggleBillPaid(user.id, bill.id, selectedMonthKey, !currentPaid);
     await loadBills();
     triggerRefresh();
   };
 
   const handleOpenAdd = () => {
+    playHaptic.medium();
     setBillToEdit(null);
     setModalVisible(true);
   };
 
   const handleOpenEdit = (bill: Bill) => {
+    playHaptic.light();
     setBillToEdit(bill);
     setModalVisible(true);
   };
@@ -77,6 +87,7 @@ export default function FaturasScreen() {
     enableNotification: boolean;
   }) => {
     if (!user) return;
+    playHaptic.success();
 
     let notificationId: string | null = null;
     if (data.enableNotification) {
@@ -105,6 +116,7 @@ export default function FaturasScreen() {
 
   const handleDelete = async (id: number) => {
     if (!user) return;
+    playHaptic.warning();
     const bill = bills.find((b) => b.id === id);
     if (bill?.notification_id) {
       await cancelNotification(bill.notification_id);
@@ -186,7 +198,7 @@ export default function FaturasScreen() {
       <FlatList
         data={filteredBills}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 120 }]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={44} color={Colors.textMuted} />
@@ -250,7 +262,11 @@ export default function FaturasScreen() {
       />
 
       {/* Botão Flutuante */}
-      <TouchableOpacity style={styles.fab} onPress={handleOpenAdd} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={[styles.fab, { bottom: Math.max(insets.bottom, 16) + 16 }]}
+        onPress={handleOpenAdd}
+        activeOpacity={0.85}
+      >
         <Ionicons name="add" size={28} color="#FFF" />
       </TouchableOpacity>
 

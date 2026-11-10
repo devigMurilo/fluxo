@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { formatMonthHeader, offsetMonthKey } from '../utils/dates';
+import { playHaptic } from '../utils/haptics';
 
 interface MonthSelectorProps {
   currentMonthKey: string;
@@ -14,10 +15,12 @@ export const MonthSelector: React.FC<MonthSelectorProps> = ({
   onChangeMonth,
 }) => {
   const handlePrev = () => {
+    playHaptic.selection();
     onChangeMonth(offsetMonthKey(currentMonthKey, -1));
   };
 
   const handleNext = () => {
+    playHaptic.selection();
     onChangeMonth(offsetMonthKey(currentMonthKey, 1));
   };
 

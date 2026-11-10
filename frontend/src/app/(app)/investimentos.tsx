@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinanceContext';
 import { Colors } from '../../constants/theme';
@@ -23,8 +24,10 @@ import {
 } from '../../db/queries';
 import { centsToBRL } from '../../utils/formatCurrency';
 import { formatDateBR } from '../../utils/dates';
+import { playHaptic } from '../../utils/haptics';
 
 export default function InvestimentosScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { refreshKey, triggerRefresh } = useFinance();
 
@@ -76,12 +79,14 @@ export default function InvestimentosScreen() {
     startDate: string;
   }) => {
     if (!user) return;
+    playHaptic.success();
     await addInvestment(user.id, data.name, data.type, data.amount, data.startDate);
     await loadInvestments();
     triggerRefresh();
   };
 
   const handleDeleteInvestment = (item: Investment) => {
+    playHaptic.warning();
     Alert.alert(
       'Remover Ativo',
       `Deseja remover "${item.name}" da sua carteira manual?`,
@@ -92,6 +97,7 @@ export default function InvestimentosScreen() {
           style: 'destructive',
           onPress: async () => {
             if (!user) return;
+            playHaptic.warning();
             await deleteInvestment(user.id, item.id);
             await loadInvestments();
             triggerRefresh();
@@ -104,7 +110,10 @@ export default function InvestimentosScreen() {
   const totalPortfolioCents = investments.reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+    >
       {/* AVISO OBRIGATÓRIO DE CONTEÚDO EDUCATIVO */}
       <View style={styles.disclaimerBanner}>
         <Ionicons name="information-circle" size={20} color={Colors.warning} style={styles.disclaimerIcon} />

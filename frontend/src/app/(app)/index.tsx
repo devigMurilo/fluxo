@@ -41,6 +41,7 @@ import {
 } from '../../db/queries';
 import { centsToBRL } from '../../utils/formatCurrency';
 import { formatDateBR, getTodayDateString, getDayLabel } from '../../utils/dates';
+import { playHaptic } from '../../utils/haptics';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -112,6 +113,11 @@ export default function DashboardScreen() {
   const handleToggleEvent = async (ev: EventItem) => {
     const userId = user?.id || 1;
     const newStatus = !ev.is_completed;
+    if (newStatus) {
+      playHaptic.success();
+    } else {
+      playHaptic.selection();
+    }
     setMonthEvents((prev) =>
       prev.map((e) => (e.id === ev.id ? { ...e, is_completed: newStatus } : e))
     );
@@ -120,10 +126,15 @@ export default function DashboardScreen() {
 
   const handleIncrementGoal = async (goal: GoalWithProgress, delta: number) => {
     const userId = user?.id || 1;
+    const newVal = Math.max(0, goal.current_value + delta);
+    if (newVal >= goal.target_value && goal.current_value < goal.target_value) {
+      playHaptic.success();
+    } else {
+      playHaptic.light();
+    }
     setActiveGoals((prev) =>
       prev.map((g) => {
         if (g.id !== goal.id) return g;
-        const newVal = Math.max(0, g.current_value + delta);
         return {
           ...g,
           current_value: newVal,
@@ -136,11 +147,13 @@ export default function DashboardScreen() {
   };
 
   const handleOpenAdd = () => {
+    playHaptic.medium();
     setTransactionToEdit(null);
     setModalVisible(true);
   };
 
   const handleOpenEdit = (t: Transaction) => {
+    playHaptic.light();
     setTransactionToEdit(t);
     setModalVisible(true);
   };
@@ -153,6 +166,7 @@ export default function DashboardScreen() {
     description: string;
   }) => {
     const userId = user?.id || 1;
+    playHaptic.success();
     if (transactionToEdit) {
       await updateTransaction(
         userId,
@@ -178,6 +192,7 @@ export default function DashboardScreen() {
 
   const handleDeleteTransaction = async (id: number) => {
     const userId = user?.id || 1;
+    playHaptic.warning();
     await deleteTransaction(userId, id);
     triggerRefresh();
   };
@@ -188,7 +203,7 @@ export default function DashboardScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -407,7 +422,10 @@ export default function DashboardScreen() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push('/importar-extrato')}
+            onPress={() => {
+              playHaptic.light();
+              router.push('/importar-extrato');
+            }}
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: '#8A05BE22' }]}>
@@ -418,7 +436,10 @@ export default function DashboardScreen() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push('/(app)/faturas')}
+            onPress={() => {
+              playHaptic.light();
+              router.push('/(app)/faturas');
+            }}
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: Colors.warningBg }]}>
@@ -429,7 +450,10 @@ export default function DashboardScreen() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push('/(app)/investimentos')}
+            onPress={() => {
+              playHaptic.light();
+              router.push('/(app)/investimentos');
+            }}
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: `${Colors.cyan}20` }]}>

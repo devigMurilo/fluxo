@@ -12,12 +12,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../constants/theme';
 import { api, saveCustomApiUrl, DEFAULT_API_URL } from '../../services/api';
+import { playHaptic } from '../../utils/haptics';
 
 export default function PerfilScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const {
     user,
     logout,
@@ -35,21 +38,25 @@ export default function PerfilScreen() {
 
   const handleToggleBiometrics = async (value: boolean) => {
     if (biometricLoading) return;
+    playHaptic.medium();
     setBiometricLoading(true);
     try {
       if (value) {
         const res = await toggleBiometrics(true);
         if (res.success) {
+          playHaptic.success();
           Alert.alert(
             'Biometria ativada! 🛡️',
             `Agora você pode entrar e desbloquear o Fluxo usando seu ${biometryLabel}.`
           );
         } else {
           if (!res.error?.toLowerCase().includes('cancel')) {
+            playHaptic.error();
             Alert.alert('Não foi possível ativar', res.error || 'A autenticação falhou.');
           }
         }
       } else {
+        playHaptic.warning();
         Alert.alert(
           'Desativar Biometria',
           `Deseja realmente desativar o acesso por ${biometryLabel}?`,
@@ -60,6 +67,7 @@ export default function PerfilScreen() {
               style: 'destructive',
               onPress: async () => {
                 await toggleBiometrics(false);
+                playHaptic.light();
                 Alert.alert('Desativada', 'O acesso biométrico foi desativado.');
               },
             },
@@ -67,6 +75,7 @@ export default function PerfilScreen() {
         );
       }
     } catch (err: any) {
+      playHaptic.error();
       Alert.alert('Erro', err?.message || 'Falha ao alterar configuração de biometria.');
     } finally {
       setBiometricLoading(false);
@@ -75,19 +84,24 @@ export default function PerfilScreen() {
 
   const handleSaveApi = async () => {
     if (!apiUrl.trim()) return;
+    playHaptic.success();
     await saveCustomApiUrl(apiUrl.trim());
     Alert.alert('Sucesso', 'Endereço da API salvo com sucesso!');
   };
 
   const handleTestConnection = async () => {
+    playHaptic.light();
     setTestingConnection(true);
     try {
       await api.get('/api/auth/me/');
+      playHaptic.success();
       Alert.alert('Conexão bem-sucedida! 🟢', 'A API respondeu normalmente.');
     } catch (error: any) {
       if (error.response?.status === 401) {
+        playHaptic.success();
         Alert.alert('Conexão ativa! 🟢', 'Servidor alcançado com sucesso (sessão autenticada).');
       } else {
+        playHaptic.error();
         Alert.alert(
           'Falha de conexão 🔴',
           `Não foi possível alcançar o servidor em: ${apiUrl}\nVerifique se o backend Django está rodando.`
@@ -99,6 +113,7 @@ export default function PerfilScreen() {
   };
 
   const handleLogout = () => {
+    playHaptic.warning();
     Alert.alert('Sair da Conta', 'Deseja realmente encerrar sua sessão no Fluxo?', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -115,7 +130,10 @@ export default function PerfilScreen() {
   const isFaceId = biometryType === 'FACE_ID';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+    >
       {/* Avatar e Dados do Usuário */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarWrap}>

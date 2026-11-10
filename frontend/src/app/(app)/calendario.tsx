@@ -25,6 +25,7 @@ import {
 import { getTodayDateString, formatDateBR, getDayLabel } from '../../utils/dates';
 import { CalendarMonthView } from '../../components/CalendarMonthView';
 import { EventModal } from '../../components/EventModal';
+import { playHaptic } from '../../utils/haptics';
 
 export default function CalendarioScreen() {
   const insets = useSafeAreaInsets();
@@ -74,6 +75,7 @@ export default function CalendarioScreen() {
   };
 
   const handleChangeMonth = (delta: number) => {
+    playHaptic.selection();
     let newMonth = currentMonth + delta;
     let newYear = currentYear;
 
@@ -90,6 +92,7 @@ export default function CalendarioScreen() {
   };
 
   const handleGoToToday = () => {
+    playHaptic.light();
     const now = new Date();
     setCurrentYear(now.getFullYear());
     setCurrentMonth(now.getMonth());
@@ -98,6 +101,11 @@ export default function CalendarioScreen() {
 
   const handleToggleCompleted = async (ev: EventItem) => {
     const newStatus = !ev.is_completed;
+    if (newStatus) {
+      playHaptic.success();
+    } else {
+      playHaptic.selection();
+    }
     // Otimista
     setDayEvents((prev) =>
       prev.map((e) => (e.id === ev.id ? { ...e, is_completed: newStatus } : e))
@@ -110,6 +118,7 @@ export default function CalendarioScreen() {
 
   const handleSaveEvent = async (data: any) => {
     const userId = user?.id || 1;
+    playHaptic.success();
     if (data.id) {
       await updateEvent(userId, data.id, data);
     } else {
@@ -120,6 +129,7 @@ export default function CalendarioScreen() {
 
   const handleDeleteEvent = async (id: number) => {
     const userId = user?.id || 1;
+    playHaptic.warning();
     await deleteEvent(userId, id);
     loadData();
   };
@@ -139,6 +149,7 @@ export default function CalendarioScreen() {
         <TouchableOpacity
           style={styles.addButtonHeader}
           onPress={() => {
+            playHaptic.medium();
             setEditingEvent(null);
             setModalVisible(true);
           }}
@@ -150,7 +161,7 @@ export default function CalendarioScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
@@ -161,7 +172,10 @@ export default function CalendarioScreen() {
           currentMonth={currentMonth}
           selectedDate={selectedDate}
           events={monthEvents}
-          onSelectDate={(d) => setSelectedDate(d)}
+          onSelectDate={(d) => {
+            playHaptic.selection();
+            setSelectedDate(d);
+          }}
           onChangeMonth={handleChangeMonth}
           onGoToToday={handleGoToToday}
         />

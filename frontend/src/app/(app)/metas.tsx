@@ -31,6 +31,7 @@ import {
 import { formatDateBR } from '../../utils/dates';
 import { GoalCard } from '../../components/GoalCard';
 import { GoalModal } from '../../components/GoalModal';
+import { playHaptic } from '../../utils/haptics';
 
 type PeriodFilter = 'all' | 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
@@ -91,11 +92,17 @@ export default function MetasScreen() {
   const handleIncrement = async (goal: GoalWithProgress, delta: number) => {
     const userId = user?.id || 1;
     try {
+      const newVal = Math.max(0, goal.current_value + delta);
+      if (newVal >= goal.target_value && goal.current_value < goal.target_value) {
+        playHaptic.success();
+      } else {
+        playHaptic.light();
+      }
+
       // Atualização otimista na UI
       setGoals((prev) =>
         prev.map((g) => {
           if (g.id !== goal.id) return g;
-          const newVal = Math.max(0, g.current_value + delta);
           return {
             ...g,
             current_value: newVal,
@@ -107,6 +114,7 @@ export default function MetasScreen() {
       const res = await incrementGoalProgress(userId, goal, delta);
 
       if (res.pointsAwarded && res.pointsAwarded > 0) {
+        playHaptic.success();
         Alert.alert(
           'Meta Conquistada! 🏆',
           `Parabéns! Você bateu a meta "${goal.title}" e ganhou +${res.pointsAwarded} pontos!`
@@ -123,6 +131,7 @@ export default function MetasScreen() {
 
   const handleSaveGoal = async (data: any) => {
     const userId = user?.id || 1;
+    playHaptic.success();
     if (data.id) {
       await updateGoal(userId, data.id, data);
     } else {
@@ -133,6 +142,7 @@ export default function MetasScreen() {
 
   const handleDeleteGoal = async (id: number) => {
     const userId = user?.id || 1;
+    playHaptic.warning();
     await deleteGoal(userId, id);
     loadData();
   };
@@ -153,6 +163,7 @@ export default function MetasScreen() {
         <TouchableOpacity
           style={styles.addButtonHeader}
           onPress={() => {
+            playHaptic.medium();
             setEditingGoal(null);
             setModalVisible(true);
           }}
@@ -165,7 +176,10 @@ export default function MetasScreen() {
       {/* Card de Gamificação & Nível de Pontos */}
       <TouchableOpacity
         style={styles.gamificationCard}
-        onPress={() => setShowHistoryModal(true)}
+        onPress={() => {
+          playHaptic.light();
+          setShowHistoryModal(true);
+        }}
         activeOpacity={0.88}
       >
         <View style={styles.gamificationTop}>
@@ -216,7 +230,10 @@ export default function MetasScreen() {
             <TouchableOpacity
               key={tab.id}
               style={[styles.filterTab, filter === tab.id && styles.filterTabActive]}
-              onPress={() => setFilter(tab.id as PeriodFilter)}
+              onPress={() => {
+                playHaptic.selection();
+                setFilter(tab.id as PeriodFilter);
+              }}
             >
               <Text style={[styles.filterTabText, filter === tab.id && styles.filterTabTextActive]}>
                 {tab.label}
@@ -235,7 +252,7 @@ export default function MetasScreen() {
         <FlatList
           data={goals}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 120 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
           }

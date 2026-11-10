@@ -25,6 +25,7 @@ import {
   getCategoriesWithCount,
   Category,
 } from '../../db/queries';
+import { playHaptic } from '../../utils/haptics';
 
 type CategoryWithCount = Category & { transactionCount: number };
 
@@ -64,17 +65,20 @@ export default function CategoriasScreen() {
   }, [loadData, refreshKey]);
 
   const handleOpenAdd = () => {
+    playHaptic.medium();
     setCategoryToEdit(null);
     setModalVisible(true);
   };
 
   const handleOpenEdit = (cat: Category) => {
+    playHaptic.light();
     setCategoryToEdit(cat);
     setModalVisible(true);
   };
 
   const handleSave = async (data: { name: string; color: string; icon: string }) => {
     if (!user) return;
+    playHaptic.success();
     if (categoryToEdit) {
       await updateCategory(user.id, categoryToEdit.id, data.name, data.color, data.icon);
     } else {
@@ -87,6 +91,7 @@ export default function CategoriasScreen() {
 
   const handleDelete = async (id: number) => {
     if (!user) return;
+    playHaptic.warning();
     await deleteCategory(user.id, id);
     await reloadCategories();
     await loadData();
@@ -208,7 +213,7 @@ export default function CategoriasScreen() {
         <FlatList
           data={filteredCategories}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 120 }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
