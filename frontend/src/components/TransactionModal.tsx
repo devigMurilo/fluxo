@@ -292,7 +292,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
                   <Text style={styles.inlineSubText}>Ícone</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inlineScroll}>
-                    {AvailableIcons.slice(0, 16).map((ic) => (
+                    {AvailableIcons.map((ic) => (
                       <TouchableOpacity
                         key={ic}
                         style={[

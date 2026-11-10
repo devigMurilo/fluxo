@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, AvailableColors, AvailableIcons } from '../constants/theme';
 import { Category } from '../db/queries';
+import { playHaptic } from '../utils/haptics';
 
 interface CategoryModalProps {
   visible: boolean;
@@ -31,9 +32,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   const [name, setName] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>(AvailableColors[0]);
   const [selectedIcon, setSelectedIcon] = useState<string>(AvailableIcons[0]);
+  const [iconSearch, setIconSearch] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
+    setIconSearch('');
     if (categoryToEdit) {
       setName(categoryToEdit.name);
       setSelectedColor(categoryToEdit.color);
@@ -53,6 +56,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
     try {
       setIsSubmitting(true);
+      playHaptic.success();
       await onSave({
         name: name.trim(),
         color: selectedColor,
@@ -68,6 +72,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
   const handleDelete = () => {
     if (!categoryToEdit || !onDelete) return;
+    playHaptic.warning();
 
     Alert.alert(
       'Confirmar exclusão',
@@ -80,6 +85,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
           onPress: async () => {
             try {
               setIsSubmitting(true);
+              playHaptic.warning();
               await onDelete(categoryToEdit.id);
               onClose();
             } catch (e: any) {
@@ -92,6 +98,10 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       ]
     );
   };
+
+  const filteredIcons = iconSearch.trim()
+    ? AvailableIcons.filter((ic) => ic.toLowerCase().includes(iconSearch.toLowerCase().trim()))
+    : AvailableIcons;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -142,7 +152,10 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                         { backgroundColor: color },
                         isSelected && styles.colorOptionSelected,
                       ]}
-                      onPress={() => setSelectedColor(color)}
+                      onPress={() => {
+                        playHaptic.selection();
+                        setSelectedColor(color);
+                      }}
                       activeOpacity={0.8}
                     >
                       {isSelected && <Ionicons name="checkmark" size={18} color="#FFF" />}
@@ -154,9 +167,33 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
             {/* Seleção de Ícone */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Escolha um Ícone</Text>
+              <View style={styles.iconHeaderRow}>
+                <Text style={styles.inputLabel}>Escolha um Ícone</Text>
+                <Text style={styles.iconCountBadge}>
+                  {filteredIcons.length} disponíveis
+                </Text>
+              </View>
+
+              {/* Barra de Busca de Ícones */}
+              <View style={styles.iconSearchWrap}>
+                <Ionicons name="search-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.iconSearchInput}
+                  placeholder="Buscar ícone (ex: carro, café, gym, dinheiro)..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={iconSearch}
+                  onChangeText={setIconSearch}
+                  autoCapitalize="none"
+                />
+                {iconSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setIconSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <View style={styles.iconsGrid}>
-                {AvailableIcons.map((icon) => {
+                {filteredIcons.map((icon) => {
                   const isSelected = selectedIcon === icon;
                   return (
                     <TouchableOpacity
@@ -165,7 +202,10 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                         styles.iconOption,
                         isSelected && { borderColor: selectedColor, backgroundColor: `${selectedColor}20` },
                       ]}
-                      onPress={() => setSelectedIcon(icon)}
+                      onPress={() => {
+                        playHaptic.selection();
+                        setSelectedIcon(icon);
+                      }}
                       activeOpacity={0.8}
                     >
                       <Ionicons
@@ -293,6 +333,35 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFF',
     transform: [{ scale: 1.1 }],
+  },
+  iconHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  iconCountBadge: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  iconSearchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  iconSearchInput: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 13,
+    padding: 0,
   },
   iconsGrid: {
     flexDirection: 'row',

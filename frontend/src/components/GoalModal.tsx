@@ -463,7 +463,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Ícone</Text>
               <View style={styles.iconGrid}>
-                {AvailableIcons.slice(0, 18).map((ic) => (
+                {AvailableIcons.map((ic) => (
                   <TouchableOpacity
                     key={ic}
                     style={[
