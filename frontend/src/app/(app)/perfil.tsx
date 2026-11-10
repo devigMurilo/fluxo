@@ -171,6 +171,44 @@ export default function PerfilScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
+
+        <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 8 }} />
+
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => router.push('/(app)/faturas')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.menuRowLeft}>
+            <View style={[styles.menuIconCircle, { backgroundColor: Colors.warningBg }]}>
+              <Ionicons name="receipt-outline" size={18} color={Colors.warning} />
+            </View>
+            <View>
+              <Text style={styles.menuRowTitle}>Faturas & Vencimentos</Text>
+              <Text style={styles.menuRowSub}>Controle faturas de cartão e alertas</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
+
+        <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 8 }} />
+
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => router.push('/(app)/investimentos')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.menuRowLeft}>
+            <View style={[styles.menuIconCircle, { backgroundColor: `${Colors.cyan}20` }]}>
+              <Ionicons name="trending-up-outline" size={18} color={Colors.cyan} />
+            </View>
+            <View>
+              <Text style={styles.menuRowTitle}>Investimentos & BCB</Text>
+              <Text style={styles.menuRowSub}>Simulador CDI/Selic e patrimônio</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
       </View>
 
       {/* Segurança & Biometria / Face ID */}
