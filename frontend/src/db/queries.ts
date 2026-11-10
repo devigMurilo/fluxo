@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { getDatabase, webStorage } from './database';
 import { CategoryPresets } from '../constants/theme';
+import { getPeriodKey } from '../utils/dates';
 
 export interface Category {
   id: number;
@@ -8,6 +9,47 @@ export interface Category {
   name: string;
   color: string;
   icon: string;
+  type?: 'all' | 'finance' | 'personal';
+}
+
+export interface EventItem {
+  id: number;
+  user_id: number;
+  title: string;
+  description?: string | null;
+  date: string; // AAAA-MM-DD
+  time?: string | null; // HH:mm
+  end_time?: string | null; // HH:mm
+  category_id?: number | null;
+  color?: string | null;
+  is_completed: boolean | number;
+  notification_id?: string | null;
+  created_at?: string;
+  category_name?: string | null;
+  category_icon?: string | null;
+  category_color?: string | null;
+}
+
+export interface Goal {
+  id: number;
+  user_id: number;
+  title: string;
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  target_type: 'counter' | 'value' | 'boolean';
+  target_value: number;
+  unit: string; // 'vezes', 'dias', 'km', 'litros', 'páginas', 'R$'
+  category_id?: number | null;
+  color: string;
+  icon: string;
+  is_active: boolean | number;
+  created_at?: string;
+  category_name?: string | null;
+}
+
+export interface GoalWithProgress extends Goal {
+  period_key: string;
+  current_value: number;
+  completed: boolean;
 }
 
 export interface Transaction {
@@ -782,4 +824,442 @@ export async function deleteInvestment(userId: number, id: number): Promise<void
 
   const db = await getDatabase();
   await db.runAsync('DELETE FROM investments WHERE id = ? AND user_id = ?', [id, userId]);
+}
+
+// ----------------------------------------------------
+// EVENTOS & CALENDÁRIO
+// ----------------------------------------------------
+
+export async function getEventsForDay(userId: number, dateStr: string): Promise<EventItem[]> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.events || [];
+    const categories = webStorage.data.categories || [];
+    return list
+      .filter((e: any) => e.user_id === userId && e.date === dateStr)
+      .map((e: any) => {
+        const cat = categories.find((c: any) => c.id === e.category_id);
+        return {
+          ...e,
+          is_completed: Boolean(e.is_completed),
+          category_name: cat ? cat.name : null,
+          category_icon: cat ? cat.icon : null,
+          category_color: cat ? cat.color : null,
+        };
+      })
+      .sort((a: any, b: any) => (a.time || '').localeCompare(b.time || ''));
+  }
+
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `SELECT e.*, c.name as category_name, c.icon as category_icon, c.color as category_color
+     FROM events e
+     LEFT JOIN categories c ON e.category_id = c.id
+     WHERE e.user_id = ? AND e.date = ?
+     ORDER BY CASE WHEN e.time IS NULL OR e.time = '' THEN 1 ELSE 0 END, e.time ASC, e.id ASC`,
+    [userId, dateStr]
+  );
+
+  return (rows as any[]).map((r) => ({
+    ...r,
+    is_completed: Boolean(r.is_completed),
+  }));
+}
+
+export async function getEventsForMonth(userId: number, yearMonth: string): Promise<EventItem[]> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.events || [];
+    return list
+      .filter((e: any) => e.user_id === userId && e.date.startsWith(yearMonth))
+      .map((e: any) => ({ ...e, is_completed: Boolean(e.is_completed) }));
+  }
+
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `SELECT e.*, c.name as category_name, c.icon as category_icon, c.color as category_color
+     FROM events e
+     LEFT JOIN categories c ON e.category_id = c.id
+     WHERE e.user_id = ? AND e.date LIKE ?
+     ORDER BY e.date ASC, e.time ASC`,
+    [userId, `${yearMonth}%`]
+  );
+
+  return (rows as any[]).map((r) => ({
+    ...r,
+    is_completed: Boolean(r.is_completed),
+  }));
+}
+
+export async function createEvent(
+  userId: number,
+  data: {
+    title: string;
+    description?: string | null;
+    date: string;
+    time?: string | null;
+    end_time?: string | null;
+    category_id?: number | null;
+    color?: string | null;
+    notification_id?: string | null;
+  }
+): Promise<number> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.events || [];
+    const id = list.length > 0 ? Math.max(...list.map((e: any) => e.id)) + 1 : 1;
+    list.push({
+      id,
+      user_id: userId,
+      ...data,
+      is_completed: 0,
+      created_at: new Date().toISOString(),
+    });
+    webStorage.data.events = list;
+    webStorage.save();
+    return id;
+  }
+
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `INSERT INTO events (user_id, title, description, date, time, end_time, category_id, color, notification_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      userId,
+      data.title,
+      data.description || null,
+      data.date,
+      data.time || null,
+      data.end_time || null,
+      data.category_id || null,
+      data.color || null,
+      data.notification_id || null,
+    ]
+  );
+  return result.lastInsertRowId;
+}
+
+export async function updateEvent(
+  userId: number,
+  id: number,
+  data: Partial<EventItem>
+): Promise<void> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.events || [];
+    const idx = list.findIndex((e: any) => e.id === id && e.user_id === userId);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...data };
+      webStorage.data.events = list;
+      webStorage.save();
+    }
+    return;
+  }
+
+  const db = await getDatabase();
+  const fields: string[] = [];
+  const params: any[] = [];
+
+  if (data.title !== undefined) { fields.push('title = ?'); params.push(data.title); }
+  if (data.description !== undefined) { fields.push('description = ?'); params.push(data.description); }
+  if (data.date !== undefined) { fields.push('date = ?'); params.push(data.date); }
+  if (data.time !== undefined) { fields.push('time = ?'); params.push(data.time); }
+  if (data.end_time !== undefined) { fields.push('end_time = ?'); params.push(data.end_time); }
+  if (data.category_id !== undefined) { fields.push('category_id = ?'); params.push(data.category_id); }
+  if (data.color !== undefined) { fields.push('color = ?'); params.push(data.color); }
+  if (data.is_completed !== undefined) { fields.push('is_completed = ?'); params.push(data.is_completed ? 1 : 0); }
+  if (data.notification_id !== undefined) { fields.push('notification_id = ?'); params.push(data.notification_id); }
+
+  if (fields.length === 0) return;
+
+  params.push(id, userId);
+  await db.runAsync(`UPDATE events SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, params);
+}
+
+export async function toggleEventCompleted(userId: number, id: number, isCompleted: boolean): Promise<void> {
+  await updateEvent(userId, id, { is_completed: isCompleted ? 1 : 0 });
+}
+
+export async function deleteEvent(userId: number, id: number): Promise<void> {
+  if (Platform.OS === 'web') {
+    webStorage.data.events = (webStorage.data.events || []).filter(
+      (e: any) => !(e.id === id && e.user_id === userId)
+    );
+    webStorage.save();
+    return;
+  }
+
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM events WHERE id = ? AND user_id = ?', [id, userId]);
+}
+
+// ----------------------------------------------------
+// METAS & HÁBITOS
+// ----------------------------------------------------
+
+export async function getGoalsWithProgress(
+  userId: number,
+  periodFilter?: 'daily' | 'weekly' | 'monthly' | 'yearly'
+): Promise<GoalWithProgress[]> {
+  const db = await getDatabase();
+
+  if (Platform.OS === 'web') {
+    const goalsList = webStorage.data.goals || [];
+    const logsList = webStorage.data.goal_logs || [];
+    const categories = webStorage.data.categories || [];
+
+    const filtered = goalsList.filter((g: any) => {
+      if (g.user_id !== userId || !g.is_active) return false;
+      if (periodFilter && g.period !== periodFilter) return false;
+      return true;
+    });
+
+    return filtered.map((g: any) => {
+      const pKey = getPeriodKey(g.period);
+      const log = logsList.find((l: any) => l.goal_id === g.id && l.period_key === pKey);
+      const cat = categories.find((c: any) => c.id === g.category_id);
+      const current_value = log ? log.current_value : 0;
+      const completed = log ? Boolean(log.completed) : current_value >= g.target_value;
+
+      return {
+        ...g,
+        category_name: cat ? cat.name : null,
+        period_key: pKey,
+        current_value,
+        completed,
+      };
+    });
+  }
+
+  let query = `
+    SELECT g.*, c.name as category_name
+    FROM goals g
+    LEFT JOIN categories c ON g.category_id = c.id
+    WHERE g.user_id = ? AND g.is_active = 1
+  `;
+  const params: any[] = [userId];
+
+  if (periodFilter) {
+    query += ` AND g.period = ?`;
+    params.push(periodFilter);
+  }
+
+  query += ` ORDER BY g.id ASC`;
+
+  const rows = (await db.getAllAsync(query, params)) as any[];
+
+  // Para cada meta, busca o log correspondente à chave atual do seu período
+  const results: GoalWithProgress[] = [];
+
+  for (const row of rows) {
+    const pKey = getPeriodKey(row.period);
+    const logRow = (await db.getFirstAsync(
+      `SELECT current_value, completed FROM goal_logs WHERE goal_id = ? AND period_key = ?`,
+      [row.id, pKey]
+    )) as { current_value: number; completed: number } | null;
+
+    const current_value = logRow ? logRow.current_value : 0;
+    const completed = logRow ? Boolean(logRow.completed) : current_value >= row.target_value;
+
+    results.push({
+      ...row,
+      period_key: pKey,
+      current_value,
+      completed,
+    });
+  }
+
+  return results;
+}
+
+export async function createGoal(
+  userId: number,
+  data: {
+    title: string;
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    target_type: 'counter' | 'value' | 'boolean';
+    target_value: number;
+    unit: string;
+    category_id?: number | null;
+    color: string;
+    icon: string;
+  }
+): Promise<number> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.goals || [];
+    const id = list.length > 0 ? Math.max(...list.map((g: any) => g.id)) + 1 : 1;
+    list.push({
+      id,
+      user_id: userId,
+      ...data,
+      is_active: 1,
+      created_at: new Date().toISOString(),
+    });
+    webStorage.data.goals = list;
+    webStorage.save();
+    return id;
+  }
+
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `INSERT INTO goals (user_id, title, period, target_type, target_value, unit, category_id, color, icon)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      userId,
+      data.title,
+      data.period,
+      data.target_type,
+      data.target_value,
+      data.unit,
+      data.category_id || null,
+      data.color,
+      data.icon,
+    ]
+  );
+  return result.lastInsertRowId;
+}
+
+export async function updateGoal(
+  userId: number,
+  id: number,
+  data: Partial<Goal>
+): Promise<void> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.goals || [];
+    const idx = list.findIndex((g: any) => g.id === id && g.user_id === userId);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...data };
+      webStorage.data.goals = list;
+      webStorage.save();
+    }
+    return;
+  }
+
+  const db = await getDatabase();
+  const fields: string[] = [];
+  const params: any[] = [];
+
+  if (data.title !== undefined) { fields.push('title = ?'); params.push(data.title); }
+  if (data.period !== undefined) { fields.push('period = ?'); params.push(data.period); }
+  if (data.target_type !== undefined) { fields.push('target_type = ?'); params.push(data.target_type); }
+  if (data.target_value !== undefined) { fields.push('target_value = ?'); params.push(data.target_value); }
+  if (data.unit !== undefined) { fields.push('unit = ?'); params.push(data.unit); }
+  if (data.category_id !== undefined) { fields.push('category_id = ?'); params.push(data.category_id); }
+  if (data.color !== undefined) { fields.push('color = ?'); params.push(data.color); }
+  if (data.icon !== undefined) { fields.push('icon = ?'); params.push(data.icon); }
+  if (data.is_active !== undefined) { fields.push('is_active = ?'); params.push(data.is_active ? 1 : 0); }
+
+  if (fields.length === 0) return;
+
+  params.push(id, userId);
+  await db.runAsync(`UPDATE goals SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, params);
+}
+
+export async function deleteGoal(userId: number, id: number): Promise<void> {
+  if (Platform.OS === 'web') {
+    webStorage.data.goals = (webStorage.data.goals || []).filter(
+      (g: any) => !(g.id === id && g.user_id === userId)
+    );
+    webStorage.data.goal_logs = (webStorage.data.goal_logs || []).filter(
+      (l: any) => l.goal_id !== id
+    );
+    webStorage.save();
+    return;
+  }
+
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM goal_logs WHERE goal_id = ?', [id]);
+  await db.runAsync('DELETE FROM goals WHERE id = ? AND user_id = ?', [id, userId]);
+}
+
+export async function incrementGoalProgress(
+  goalId: number,
+  periodKey: string,
+  delta: number,
+  targetValue: number
+): Promise<{ currentValue: number; completed: boolean }> {
+  if (Platform.OS === 'web') {
+    const logs = webStorage.data.goal_logs || [];
+    let log = logs.find((l: any) => l.goal_id === goalId && l.period_key === periodKey);
+    let val = (log ? log.current_value : 0) + delta;
+    if (val < 0) val = 0;
+    const completed = val >= targetValue;
+
+    if (!log) {
+      logs.push({
+        id: logs.length + 1,
+        goal_id: goalId,
+        period_key: periodKey,
+        current_value: val,
+        completed: completed ? 1 : 0,
+      });
+    } else {
+      log.current_value = val;
+      log.completed = completed ? 1 : 0;
+    }
+    webStorage.data.goal_logs = logs;
+    webStorage.save();
+    return { currentValue: val, completed };
+  }
+
+  const db = await getDatabase();
+  const existing = (await db.getFirstAsync(
+    `SELECT current_value FROM goal_logs WHERE goal_id = ? AND period_key = ?`,
+    [goalId, periodKey]
+  )) as { current_value: number } | null;
+
+  let val = (existing ? existing.current_value : 0) + delta;
+  if (val < 0) val = 0;
+  const completed = val >= targetValue;
+
+  await db.runAsync(
+    `INSERT INTO goal_logs (goal_id, period_key, current_value, completed, updated_at)
+     VALUES (?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(goal_id, period_key) DO UPDATE SET
+       current_value = ?,
+       completed = ?,
+       updated_at = datetime('now')`,
+    [goalId, periodKey, val, completed ? 1 : 0, val, completed ? 1 : 0]
+  );
+
+  return { currentValue: val, completed };
+}
+
+export async function setGoalProgress(
+  goalId: number,
+  periodKey: string,
+  value: number,
+  targetValue: number
+): Promise<{ currentValue: number; completed: boolean }> {
+  const val = Math.max(0, value);
+  const completed = val >= targetValue;
+
+  if (Platform.OS === 'web') {
+    const logs = webStorage.data.goal_logs || [];
+    let log = logs.find((l: any) => l.goal_id === goalId && l.period_key === periodKey);
+    if (!log) {
+      logs.push({
+        id: logs.length + 1,
+        goal_id: goalId,
+        period_key: periodKey,
+        current_value: val,
+        completed: completed ? 1 : 0,
+      });
+    } else {
+      log.current_value = val;
+      log.completed = completed ? 1 : 0;
+    }
+    webStorage.data.goal_logs = logs;
+    webStorage.save();
+    return { currentValue: val, completed };
+  }
+
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT INTO goal_logs (goal_id, period_key, current_value, completed, updated_at)
+     VALUES (?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(goal_id, period_key) DO UPDATE SET
+       current_value = ?,
+       completed = ?,
+       updated_at = datetime('now')`,
+    [goalId, periodKey, val, completed ? 1 : 0, val, completed ? 1 : 0]
+  );
+
+  return { currentValue: val, completed };
 }

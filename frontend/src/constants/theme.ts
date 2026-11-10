@@ -44,8 +44,10 @@ export const CategoryPresets = [
   { name: 'Transporte', color: '#3B82F6', icon: 'car-outline' },
   { name: 'Moradia', color: '#F59E0B', icon: 'home-outline' },
   { name: 'Lazer', color: '#8B5CF6', icon: 'game-controller-outline' },
-  { name: 'Saúde', color: '#EC4899', icon: 'medkit-outline' },
-  { name: 'Educação', color: '#10B981', icon: 'school-outline' },
+  { name: 'Saúde & Treino', color: '#EC4899', icon: 'fitness-outline' },
+  { name: 'Educação & Estudos', color: '#10B981', icon: 'school-outline' },
+  { name: 'Carreira & Trabalho', color: '#0EA5E9', icon: 'briefcase-outline' },
+  { name: 'Produtividade', color: '#EAB308', icon: 'sparkles-outline' },
   { name: 'Outros', color: '#64748B', icon: 'ellipsis-horizontal-circle-outline' },
 ];
 

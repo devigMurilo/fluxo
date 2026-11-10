@@ -40,50 +40,42 @@ export default function AppLayout() {
         name="index"
         options={{
           title: 'Início',
-          headerTitle: 'Fluxo',
+          headerTitle: 'Fluxo Life OS',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pie-chart-outline" size={size} color={color as string} />
+            <Ionicons name="home-outline" size={size} color={color as string} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="calendario"
+        options={{
+          title: 'Agenda',
+          headerTitle: 'Agenda & Calendário',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color as string} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="metas"
+        options={{
+          title: 'Metas',
+          headerTitle: 'Metas & Hábitos',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="trophy-outline" size={size} color={color as string} />
           ),
         }}
       />
       <Tabs.Screen
         name="transacoes"
         options={{
-          title: 'Transações',
-          headerTitle: 'Minhas Transações',
+          title: 'Finanças',
+          headerTitle: 'Minhas Finanças',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="swap-horizontal-outline" size={size} color={color as string} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="categorias"
-        options={{
-          title: 'Categorias',
-          headerTitle: 'Minhas Categorias',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pricetags-outline" size={size} color={color as string} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="faturas"
-        options={{
-          title: 'Faturas',
-          headerTitle: 'Faturas & Lembretes',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="receipt-outline" size={size} color={color as string} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="investimentos"
-        options={{
-          title: 'Investimentos',
-          headerTitle: 'Investimentos & Simulações',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="trending-up-outline" size={size} color={color as string} />
+            <Ionicons name="wallet-outline" size={size} color={color as string} />
           ),
         }}
       />
@@ -95,6 +87,30 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color as string} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="categorias"
+        options={{
+          href: null,
+          title: 'Categorias',
+          headerTitle: 'Minhas Categorias',
+        }}
+      />
+      <Tabs.Screen
+        name="faturas"
+        options={{
+          href: null,
+          title: 'Faturas',
+          headerTitle: 'Faturas & Lembretes',
+        }}
+      />
+      <Tabs.Screen
+        name="investimentos"
+        options={{
+          href: null,
+          title: 'Investimentos',
+          headerTitle: 'Investimentos & Simulações',
         }}
       />
     </Tabs>

@@ -36,6 +36,12 @@ export async function requestNotificationPermissions(): Promise<boolean> {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#10B981',
       });
+      await Notifications.setNotificationChannelAsync('eventos', {
+        name: 'Compromissos & Agenda',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#3B82F6',
+      });
     }
 
     return finalStatus === 'granted';
@@ -101,6 +107,72 @@ export async function scheduleBillNotification(
     return notificationId;
   } catch (error) {
     console.warn('Erro ao agendar notificação:', error);
+    return null;
+  }
+}
+
+/**
+ * Agenda notificação para um evento ou compromisso.
+ * @param title Título do compromisso
+ * @param dateStr Data no formato 'AAAA-MM-DD'
+ * @param timeStr Hora no formato 'HH:mm' (se omitido, notifica às 08:00 do dia)
+ * @param advanceMinutes Minutos antes do evento (padrão: 15 min)
+ */
+export async function scheduleEventNotification(
+  title: string,
+  dateStr: string,
+  timeStr?: string | null,
+  advanceMinutes: number = 15
+): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
+  try {
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) {
+      return null;
+    }
+
+    const [year, month, day] = dateStr.split('-').map(Number);
+    let hours = 8;
+    let minutes = 0;
+
+    if (timeStr && timeStr.includes(':')) {
+      const [h, m] = timeStr.split(':').map(Number);
+      hours = h;
+      minutes = m;
+    }
+
+    const eventDate = new Date(year, month - 1, day, hours, minutes, 0);
+    const triggerDate = new Date(eventDate.getTime() - advanceMinutes * 60 * 1000);
+
+    const now = new Date();
+    if (triggerDate.getTime() <= now.getTime()) {
+      return null; // O horário do lembrete já passou
+    }
+
+    const timeLabel = timeStr ? ` às ${timeStr}` : '';
+    const bodyText = advanceMinutes > 0
+      ? `Seu compromisso começa em ${advanceMinutes} minutos (${timeStr || 'hoje'}).`
+      : `Seu compromisso começou${timeLabel}!`;
+
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `📅 ${title}`,
+        body: bodyText,
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerDate,
+        channelId: 'eventos',
+      },
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('Erro ao agendar notificação de evento:', error);
     return null;
   }
 }
