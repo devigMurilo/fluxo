@@ -183,14 +183,25 @@ export default function TransacoesScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.manageCatBtn}
-            onPress={() => router.push('/categorias')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="pricetags-outline" size={15} color={Colors.primary} />
-            <Text style={styles.manageCatBtnText}>Gerenciar Categorias</Text>
-          </TouchableOpacity>
+          <View style={styles.actionButtonsRow}>
+            <TouchableOpacity
+              style={styles.importBtn}
+              onPress={() => router.push('/importar-extrato')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="cloud-upload-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.importBtnText}>Importar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.manageCatBtn}
+              onPress={() => router.push('/categorias')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="pricetags-outline" size={14} color={Colors.primary} />
+              <Text style={styles.manageCatBtnText}>Categorias</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -350,6 +361,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  importBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    gap: 5,
+  },
+  importBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   manageCatBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -357,7 +387,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 10,
-    gap: 6,
+    gap: 5,
     borderWidth: 1,
     borderColor: `${Colors.primary}30`,
   },

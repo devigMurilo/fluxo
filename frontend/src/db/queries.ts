@@ -21,6 +21,9 @@ export interface Transaction {
   category_name?: string;
   category_color?: string;
   category_icon?: string;
+  fitid?: string | null;
+  bank_name?: string | null;
+  sync_source?: string | null;
 }
 
 export interface Bill {
@@ -257,7 +260,10 @@ export async function addTransaction(
   type: 'receita' | 'despesa',
   categoryId: number | null,
   date: string,
-  description: string
+  description: string,
+  fitid?: string | null,
+  bankName?: string | null,
+  syncSource?: string | null
 ): Promise<number> {
   if (Platform.OS === 'web') {
     const list = webStorage.data.transactions || [];
@@ -270,6 +276,9 @@ export async function addTransaction(
       category_id: categoryId,
       date,
       description,
+      fitid: fitid || null,
+      bank_name: bankName || null,
+      sync_source: syncSource || 'manual',
     });
     webStorage.data.transactions = list;
     webStorage.save();
@@ -278,11 +287,135 @@ export async function addTransaction(
 
   const db = await getDatabase();
   const result = await db.runAsync(
-    `INSERT INTO transactions (user_id, amount, type, category_id, date, description)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [userId, amount, type, categoryId, date, description]
+    `INSERT INTO transactions (user_id, amount, type, category_id, date, description, fitid, bank_name, sync_source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId, amount, type, categoryId, date, description, fitid || null, bankName || null, syncSource || 'manual']
   );
   return result.lastInsertRowId;
+}
+
+export async function getExistingFitids(userId: number): Promise<Set<string>> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.transactions || [];
+    const fitids = new Set<string>();
+    for (const t of list) {
+      if (t.user_id === userId && t.fitid) {
+        fitids.add(t.fitid);
+      }
+    }
+    return fitids;
+  }
+
+  const db = await getDatabase();
+  const rows: any[] = await db.getAllAsync(
+    `SELECT fitid FROM transactions WHERE user_id = ? AND fitid IS NOT NULL`,
+    [userId]
+  );
+  const fitids = new Set<string>();
+  for (const r of rows) {
+    if (r.fitid) {
+      fitids.add(r.fitid);
+    }
+  }
+  return fitids;
+}
+
+export interface BankImportPayload {
+  amount: number;
+  type: 'receita' | 'despesa';
+  categoryId: number | null;
+  date: string;
+  description: string;
+  fitid?: string;
+  bankName?: string;
+  syncSource?: string;
+}
+
+export async function importBankTransactions(
+  userId: number,
+  transactions: BankImportPayload[]
+): Promise<{ importedCount: number; skippedCount: number }> {
+  if (transactions.length === 0) {
+    return { importedCount: 0, skippedCount: 0 };
+  }
+
+  const existingFitids = await getExistingFitids(userId);
+  let importedCount = 0;
+  let skippedCount = 0;
+
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.transactions || [];
+    let currentId = list.length > 0 ? Math.max(...list.map((t: any) => t.id)) + 1 : 1;
+
+    for (const item of transactions) {
+      if (item.fitid && existingFitids.has(item.fitid)) {
+        skippedCount++;
+        continue;
+      }
+
+      list.push({
+        id: currentId++,
+        user_id: userId,
+        amount: item.amount,
+        type: item.type,
+        category_id: item.categoryId,
+        date: item.date,
+        description: item.description,
+        fitid: item.fitid || null,
+        bank_name: item.bankName || 'Banco',
+        sync_source: item.syncSource || 'ofx',
+      });
+
+      if (item.fitid) {
+        existingFitids.add(item.fitid);
+      }
+      importedCount++;
+    }
+
+    webStorage.data.transactions = list;
+    webStorage.save();
+    return { importedCount, skippedCount };
+  }
+
+  const db = await getDatabase();
+  await db.execAsync('BEGIN TRANSACTION;');
+
+  try {
+    for (const item of transactions) {
+      if (item.fitid && existingFitids.has(item.fitid)) {
+        skippedCount++;
+        continue;
+      }
+
+      await db.runAsync(
+        `INSERT INTO transactions (user_id, amount, type, category_id, date, description, fitid, bank_name, sync_source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          item.amount,
+          item.type,
+          item.categoryId,
+          item.date,
+          item.description,
+          item.fitid || null,
+          item.bankName || 'Banco',
+          item.syncSource || 'ofx',
+        ]
+      );
+
+      if (item.fitid) {
+        existingFitids.add(item.fitid);
+      }
+      importedCount++;
+    }
+
+    await db.execAsync('COMMIT;');
+  } catch (error) {
+    await db.execAsync('ROLLBACK;');
+    throw error;
+  }
+
+  return { importedCount, skippedCount };
 }
 
 export async function updateTransaction(

@@ -175,13 +175,24 @@ export default function DashboardScreen() {
 
           <TouchableOpacity
             style={styles.actionButton}
+            onPress={() => router.push('/importar-extrato')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconWrap, { backgroundColor: '#8A05BE22' }]}>
+              <Ionicons name="cloud-upload-outline" size={20} color="#A855F7" />
+            </View>
+            <Text style={styles.actionText}>Importar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
             onPress={() => router.push('/(app)/transacoes')}
             activeOpacity={0.8}
           >
             <View style={[styles.actionIconWrap, { backgroundColor: Colors.infoBg }]}>
               <Ionicons name="list-outline" size={20} color={Colors.info} />
             </View>
-            <Text style={styles.actionText}>Ver Extrato</Text>
+            <Text style={styles.actionText}>Extrato</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

@@ -132,9 +132,28 @@ export default function PerfilScreen() {
         </View>
       </View>
 
-      {/* Atalho Categorias */}
+      {/* Atalho Categorias & Extrato Bancário */}
       <View style={styles.card}>
-        <Text style={styles.cardSectionTitle}>Personalização</Text>
+        <Text style={styles.cardSectionTitle}>Personalização & Bancos</Text>
+
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => router.push('/importar-extrato')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.menuRowLeft}>
+            <View style={[styles.menuIconCircle, { backgroundColor: '#8A05BE25' }]}>
+              <Ionicons name="cloud-upload-outline" size={18} color="#A855F7" />
+            </View>
+            <View>
+              <Text style={styles.menuRowTitle}>Importar Extrato Bancário</Text>
+              <Text style={styles.menuRowSub}>Nubank, Banco Inter e outros (OFX / CSV)</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
+
+        <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 8 }} />
 
         <TouchableOpacity
           style={styles.menuRow}

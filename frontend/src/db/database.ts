@@ -96,6 +96,28 @@ export async function initDatabase(): Promise<void> {
       start_date TEXT NOT NULL
     );
   `);
+
+  // Migrações seguras para suporte a extratos bancários (OFX / Open Finance)
+  try {
+    await db.execAsync(`ALTER TABLE transactions ADD COLUMN fitid TEXT;`);
+  } catch (e) {
+    // Coluna já existe
+  }
+  try {
+    await db.execAsync(`ALTER TABLE transactions ADD COLUMN bank_name TEXT;`);
+  } catch (e) {
+    // Coluna já existe
+  }
+  try {
+    await db.execAsync(`ALTER TABLE transactions ADD COLUMN sync_source TEXT;`);
+  } catch (e) {
+    // Coluna já existe
+  }
+  try {
+    await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_transactions_fitid ON transactions (user_id, fitid);`);
+  } catch (e) {
+    // Índice já existe ou falha não-crítica
+  }
 }
 
 export { webStorage };
