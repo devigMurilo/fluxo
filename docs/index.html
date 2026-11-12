@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluxo - Gestão Financeira Pessoal 100% Offline & Inteligente</title>
+  <meta name="description" content="Controle suas finanças com privacidade absoluta. O Fluxo funciona 100% offline no seu Android com banco SQLite local, gráficos, faturas e simulador de investimentos com taxas Selic/CDI.">
+  <meta name="theme-color" content="#10B981">
+  
+  <!-- Open Graph / SEO -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://devigmurilo.github.io/fluxo/">
+  <meta property="og:title" content="Fluxo - Controle Financeiro Privado e Offline">
+  <meta property="og:description" content="Seu dinheiro sob controle sem servidores de terceiros. Baixe o APK oficial gratuitamente.">
+  <meta property="og:image" content="./assets/icon.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+              950: '#022c22',
+            },
+            dark: {
+              bg: '#090D16',
+              card: '#0F172A',
+              cardBorder: '#1E293B',
+              surface: '#161F37'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-12px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #070B12;
+      color: #F1F5F9;
+    }
+    
+    .glow-radial {
+      background: radial-gradient(circle at 50% 20%, rgba(16, 185, 129, 0.15) 0%, rgba(7, 11, 18, 0) 70%);
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(16, 185, 129, 0.35);
+      box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.15);
+    }
+
+    .phone-shadow {
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 50px rgba(16, 185, 129, 0.2);
+    }
+
+    /* Custom range input styling */
+    input[type=range] {
+      accent-color: #10B981;
+    }
+  </style>
+</head>
+<body class="min-h-screen selection:bg-brand-500 selection:text-black overflow-x-hidden">
+
+  <!-- Background Ambience Glow -->
+  <div class="fixed inset-0 pointer-events-none glow-radial z-0"></div>
+  <div class="fixed top-[-150px] right-[-100px] w-[500px] h-[500px] bg-brand-500/10 rounded-full blur-[140px] pointer-events-none"></div>
+  <div class="fixed bottom-[-150px] left-[-100px] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[140px] pointer-events-none"></div>
+
+  <!-- NAVIGATION -->
+  <nav class="sticky top-0 z-50 backdrop-blur-xl bg-dark-bg/80 border-b border-white/5 transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-3 group">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 to-brand-400 p-0.5 shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform duration-300">
+          <img src="./assets/icon.png" alt="Fluxo Logo" class="w-full h-full object-cover rounded-[14px]">
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-black tracking-tight text-white">Fluxo</span>
+            <span class="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-brand-500/20 text-brand-400 rounded-full border border-brand-500/30">v1.0.0</span>
+          </div>
+          <span class="text-xs text-slate-400 -mt-0.5 font-medium">Finanças Pessoais</span>
+        </div>
+      </a>
+
+      <!-- Desktop Links -->
+      <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+        <a href="#recursos" class="hover:text-brand-400 transition-colors">Recursos</a>
+        <a href="#privacidade" class="hover:text-brand-400 transition-colors">Privacidade</a>
+        <a href="#simulador" class="hover:text-brand-400 transition-colors">Simulador</a>
+        <a href="#como-instalar" class="hover:text-brand-400 transition-colors">Como Instalar</a>
+        <a href="#faq" class="hover:text-brand-400 transition-colors">FAQ</a>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/devigMurilo/fluxo" target="_blank" rel="noopener noreferrer" 
+           class="p-2.5 rounded-xl border border-white/10 hover:border-white/25 text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+           title="Repositório no GitHub">
+          <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+        </a>
+
+        <a href="https://github.com/devigMurilo/fluxo/releases/download/v1.0.0/fluxo.apk" 
+           class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-slate-950 font-bold text-sm shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+          </svg>
+          <span>Baixar APK</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="relative pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+        
+        <!-- Hero Text -->
+        <div class="lg:col-span-7 text-center lg:text-left">
+          
+          <!-- Badge -->
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold mb-6 animate-pulse-slow">
+            <span class="w-2 h-2 rounded-full bg-brand-400"></span>
+            100% Offline • Sem Assinatura • 100% Gratuito
+          </div>
+
+          <!-- Main Title -->
+          <h1 class="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.1] mb-6">
+            O controle do seu dinheiro. <br class="hidden sm:inline">
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-brand-300 to-emerald-200">
+              Direto no seu celular.
+            </span>
+          </h1>
+
+          <!-- Subtitle -->
+          <p class="text-lg sm:text-xl text-slate-300 mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
+            Esqueça servidores lentos, vazamentos de dados ou planos pagos. O <strong>Fluxo</strong> salva tudo em um banco de dados local seguro no seu aparelho, com gráficos em tempo real, faturas e taxas oficiais do Banco Central.
+          </p>
+
+          <!-- CTAs -->
+          <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-10">
+            <a href="https://github.com/devigMurilo/fluxo/releases/download/v1.0.0/fluxo.apk" 
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-slate-950 font-extrabold text-base shadow-xl shadow-brand-500/30 hover:shadow-brand-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <!-- Android Icon -->
+              <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-1.0001s.4482-.9997.9993-.9997c.5516 0 .9997.4482.9997.9997 0 .5515-.4481 1.0001-.9997 1.0001m-11.046 0c-.5511 0-.9993-.4486-.9993-1.0001s.4482-.9997.9993-.9997c.5516 0 .9998.4482.9998.9997 0 .5515-.4482 1.0001-.9998 1.0001m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5898 8.4098 13.854 8.077 12 8.077c-1.854 0-3.5898.3328-5.1368.8727L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.152 5676l1.9972 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
+              </svg>
+              <span>Baixar APK Grátis (v1.0.0)</span>
+            </a>
+
+            <a href="https://github.com/devigMurilo/fluxo/releases/tag/v1.0.0" target="_blank" rel="noopener noreferrer"
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl glass-card text-white font-semibold text-base hover:bg-white/10 transition-all">
+              <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+              </svg>
+              <span>Ver Release Notes</span>
+            </a>
+          </div>
+
+          <!-- Feature Bullets -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-white/10 text-left">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs">✓</div>
+              <span class="text-xs sm:text-sm text-slate-300 font-medium">Android 8.0 ou superior</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs">✓</div>
+              <span class="text-xs sm:text-sm text-slate-300 font-medium">Armazenamento SQLite</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs">✓</div>
+              <span class="text-xs sm:text-sm text-slate-300 font-medium">Sem Anúncios / Sem Tracking</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Phone Mockup Preview -->
+        <div class="lg:col-span-5 flex justify-center relative">
+          
+          <!-- Outer Phone Frame -->
+          <div class="relative w-[310px] sm:w-[330px] rounded-[48px] p-3 bg-gradient-to-b from-slate-700 via-slate-900 to-black phone-shadow border-4 border-slate-700 animate-float">
+            
+            <!-- Speaker notch -->
+            <div class="absolute top-6 left-1/2 -translate-x-1/2 w-24 h-4 bg-black rounded-full z-20 flex items-center justify-center">
+              <div class="w-3 h-3 rounded-full bg-slate-900 border border-slate-700"></div>
+            </div>
+
+            <!-- Inner Phone Screen -->
+            <div class="w-full bg-[#0A0F1D] rounded-[38px] overflow-hidden pt-8 pb-6 px-4 text-white text-xs border border-white/5 select-none">
+              
+              <!-- App Topbar -->
+              <div class="flex items-center justify-between mb-4 mt-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 font-bold text-xs">
+                    IM
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-slate-400 leading-none">Olá, bem-vindo</p>
+                    <p class="font-bold text-slate-100 text-xs">Murilo</p>
+                  </div>
+                </div>
+                <div class="flex gap-1.5 items-center">
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">Offline</span>
+                </div>
+              </div>
+
+              <!-- Main Balance Card -->
+              <div class="p-4 rounded-2xl bg-gradient-to-br from-brand-900/60 via-slate-900 to-slate-950 border border-brand-500/30 mb-4 shadow-lg shadow-brand-900/20">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-[11px] text-slate-300 font-medium">Saldo em Caixa</span>
+                  <span class="text-[10px] text-brand-300 bg-brand-500/10 px-2 py-0.5 rounded-md">Novembro 2026</span>
+                </div>
+                <div class="text-2xl font-black text-white tracking-tight mb-3">R$ 8.450,20</div>
+                
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                  <div>
+                    <span class="text-[9px] text-slate-400 block">Receitas</span>
+                    <span class="text-xs font-bold text-emerald-400">+ R$ 12.300,00</span>
+                  </div>
+                  <div>
+                    <span class="text-[9px] text-slate-400 block">Despesas</span>
+                    <span class="text-xs font-bold text-rose-400">- R$ 3.849,80</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Action Badges -->
+              <div class="grid grid-cols-4 gap-2 mb-4 text-center">
+                <div class="p-2 rounded-xl bg-slate-900 border border-white/5 flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1 text-sm font-bold">+</div>
+                  <span class="text-[9px] text-slate-300">Nova</span>
+                </div>
+                <div class="p-2 rounded-xl bg-slate-900 border border-white/5 flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center mb-1 text-xs">🧾</div>
+                  <span class="text-[9px] text-slate-300">Faturas</span>
+                </div>
+                <div class="p-2 rounded-xl bg-slate-900 border border-white/5 flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center mb-1 text-xs">📈</div>
+                  <span class="text-[9px] text-slate-300">Investir</span>
+                </div>
+                <div class="p-2 rounded-xl bg-slate-900 border border-white/5 flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center mb-1 text-xs">📂</div>
+                  <span class="text-[9px] text-slate-300">Categorias</span>
+                </div>
+              </div>
+
+              <!-- Spending breakdown -->
+              <div class="mb-4 p-3 rounded-2xl bg-slate-900/80 border border-white/5">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-[11px] font-semibold text-slate-200">Despesas por Categoria</span>
+                  <span class="text-[10px] text-slate-400">Top 3</span>
+                </div>
+                <div class="space-y-2">
+                  <div>
+                    <div class="flex justify-between text-[10px] text-slate-300 mb-0.5">
+                      <span>🍔 Alimentação</span>
+                      <span class="font-bold">R$ 1.450 (37%)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                      <div class="bg-amber-400 h-1.5 rounded-full" style="width: 37%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-[10px] text-slate-300 mb-0.5">
+                      <span>🏠 Moradia & Contas</span>
+                      <span class="font-bold">R$ 1.200 (31%)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                      <div class="bg-blue-400 h-1.5 rounded-full" style="width: 31%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-[10px] text-slate-300 mb-0.5">
+                      <span>🚗 Transporte</span>
+                      <span class="font-bold">R$ 680 (17%)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                      <div class="bg-emerald-400 h-1.5 rounded-full" style="width: 17%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recent Transaction -->
+              <div class="p-2.5 rounded-xl bg-slate-900/50 border border-white/5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+                    💰
+                  </div>
+                  <div>
+                    <p class="text-[10px] font-semibold text-slate-200 leading-none">Salário Mensal</p>
+                    <p class="text-[8px] text-slate-400">Hoje às 10:15</p>
+                  </div>
+                </div>
+                <span class="text-[11px] font-bold text-emerald-400">+ R$ 7.500,00</span>
+              </div>
+
+              <!-- Phone Bottom Home Bar -->
+              <div class="w-28 h-1 bg-slate-700 rounded-full mx-auto mt-4"></div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS BAR -->
+  <section class="border-y border-white/5 bg-slate-950/60 py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div>
+          <div class="text-3xl md:text-4xl font-extrabold text-brand-400">100%</div>
+          <div class="text-sm text-slate-400 font-medium mt-1">Offline & Local</div>
+        </div>
+        <div>
+          <div class="text-3xl md:text-4xl font-extrabold text-white">0 ms</div>
+          <div class="text-sm text-slate-400 font-medium mt-1">Sem Espera de Servidor</div>
+        </div>
+        <div>
+          <div class="text-3xl md:text-4xl font-extrabold text-brand-400">0 R$</div>
+          <div class="text-sm text-slate-400 font-medium mt-1">Grátis para Sempre</div>
+        </div>
+        <div>
+          <div class="text-3xl md:text-4xl font-extrabold text-white">100%</div>
+          <div class="text-sm text-slate-400 font-medium mt-1">Código Aberto</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES SECTION -->
+  <section id="recursos" class="py-24 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 class="text-xs font-bold uppercase tracking-widest text-brand-400 mb-3">Recursos Poderosos</h2>
+        <p class="text-3xl sm:text-4xl font-black text-white tracking-tight">Tudo o que você precisa para dominar suas contas</p>
+        <p class="text-slate-400 mt-4 text-base">Projetado para ser simples, rápido e totalmente independente de serviços na nuvem.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        
+        <!-- Card 1 -->
+        <div class="glass-card p-8 rounded-3xl transition-all">
+          <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center text-2xl mb-6">
+            📱
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">100% Offline (SQLite)</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Seus registros financeiros ficam armazenados exclusivamente no banco de dados local do seu smartphone. Você tem privacidade total sem depender de conexão ou APIs externas.
+          </p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="glass-card p-8 rounded-3xl transition-all">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mb-6">
+            ⚖️
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Precisão ao Centavo</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Adeus erros de ponto flutuante. O Fluxo calcula e armazena cada movimentação em centavos inteiros, garantindo exatidão contábil rigorosa em saldos e balanços.
+          </p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="glass-card p-8 rounded-3xl transition-all">
+          <div class="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-2xl mb-6">
+            📊
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Gráficos & Balanço Mensal</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Visualize despesas com gráficos de rosca por categoria e barras com o histórico semanal. Mude de mês com um toque e entenda seus hábitos de consumo.
+          </p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="glass-card p-8 rounded-3xl transition-all">
+          <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-2xl mb-6">
+            🧾
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Faturas & Alertas Locais</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Cadastre suas faturas recorrentes e receba lembretes no aparelho 2 dias antes do vencimento. Marque faturas como pagas e mantenha sua pontuação no azul.
+          </p>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="glass-card p-8 rounded-3xl transition-all">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-2xl mb-6">
+            🏦
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Taxas Oficiais do Banco Central</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Acompanhe a Selic e o CDI diretamente da API SGS do Banco Central. Tenha em mãos as taxas reais para calibrar seus investimentos com contingência offline.
+          </p>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="glass-card p-8 rounded-3xl transition-all">
+          <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-2xl mb-6">
+            🔒
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Autenticação com Hash SHA-256</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Sua senha é protegida localmente com hash criptográfico SHA-256 e salting. Ninguém tem acesso ao seu dispositivo sem a sua chave de acesso.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE SIMULATOR SECTION -->
+  <section id="simulador" class="py-20 relative bg-slate-950/70 border-y border-white/5">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 text-xs font-bold border border-brand-500/20">Mini Demonstração Interativa</span>
+        <h2 class="text-3xl font-extrabold text-white mt-3">Simulador de Juros Compostos</h2>
+        <p class="text-slate-400 text-sm mt-2">Teste o poder do tempo e dos aportes consistentes com taxa de mercado.</p>
+      </div>
+
+      <div class="glass-card p-6 sm:p-10 rounded-3xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+        
+        <!-- Controls -->
+        <div class="md:col-span-6 space-y-6">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="text-xs font-semibold text-slate-300">Aporte Mensal</label>
+              <span id="valorAporteLabel" class="text-sm font-bold text-brand-400">R$ 500</span>
+            </div>
+            <input id="sliderAporte" type="range" min="50" max="5000" step="50" value="500" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="text-xs font-semibold text-slate-300">Prazo de Aplicação</label>
+              <span id="valorPrazoLabel" class="text-sm font-bold text-brand-400">5 anos (60 meses)</span>
+            </div>
+            <input id="sliderPrazo" type="range" min="1" max="30" step="1" value="5" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="text-xs font-semibold text-slate-300">Rentabilidade Anual (% a.a.)</label>
+              <span id="valorTaxaLabel" class="text-sm font-bold text-brand-400">10.75% (Referência CDI/Selic)</span>
+            </div>
+            <input id="sliderTaxa" type="range" min="4" max="18" step="0.25" value="10.75" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+          </div>
+        </div>
+
+        <!-- Result Box -->
+        <div class="md:col-span-6 bg-dark-bg/90 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
+          <div>
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Patrimônio Futuro Estimado</span>
+            <div id="resultadoFinal" class="text-3xl sm:text-4xl font-black text-brand-400 tracking-tight mt-1 mb-4">
+              R$ 39.845,12
+            </div>
+          </div>
+
+          <div class="space-y-3 pt-4 border-t border-white/10 text-xs">
+            <div class="flex justify-between text-slate-300">
+              <span>Total Investido do seu bolso:</span>
+              <span id="totalInvestido" class="font-bold text-white">R$ 30.000,00</span>
+            </div>
+            <div class="flex justify-between text-slate-300">
+              <span>Total ganho apenas em Juros:</span>
+              <span id="totalJuros" class="font-bold text-emerald-400">+ R$ 9.845,12</span>
+            </div>
+          </div>
+
+          <p class="text-[10px] text-slate-500 mt-6 italic">
+            * Simulação com fins educativos. Não constitui recomendação de investimento.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- HOW TO INSTALL / QR CODE SECTION -->
+  <section id="como-instalar" class="py-24 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        
+        <div class="lg:col-span-7">
+          <span class="text-xs font-bold uppercase tracking-widest text-brand-400">Pronto para Usar</span>
+          <h2 class="text-3xl sm:text-4xl font-black text-white tracking-tight mt-2 mb-6">
+            Instale o APK em menos de 1 minuto
+          </h2>
+
+          <div class="space-y-6">
+            <div class="flex items-start gap-4">
+              <div class="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 font-extrabold flex items-center justify-center shrink-0">
+                1
+              </div>
+              <div>
+                <h4 class="text-base font-bold text-white">Baixe o APK standalone</h4>
+                <p class="text-slate-400 text-sm mt-0.5">Clique no botão de download direto ou escaneie o código QR com a câmera do seu smartphone.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 font-extrabold flex items-center justify-center shrink-0">
+                2
+              </div>
+              <div>
+                <h4 class="text-base font-bold text-white">Autorize a instalação</h4>
+                <p class="text-slate-400 text-sm mt-0.5">No Android, se solicitado, clique em "Permitir desta fonte" ou "Instalar mesmo assim" para pacotes externos de código aberto.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 font-extrabold flex items-center justify-center shrink-0">
+                3
+              </div>
+              <div>
+                <h4 class="text-base font-bold text-white">Abra e comece a controlar</h4>
+                <p class="text-slate-400 text-sm mt-0.5">Crie sua conta local diretamente na tela de cadastro. Não é necessário e-mail real nem confirmação externa.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8 flex flex-wrap gap-4">
+            <a href="https://github.com/devigMurilo/fluxo/releases/download/v1.0.0/fluxo.apk" 
+               class="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-lg shadow-brand-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+              </svg>
+              <span>Download Direto: fluxo.apk (~103MB)</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- QR Code Card -->
+        <div class="lg:col-span-5 flex justify-center">
+          <div class="glass-card p-8 rounded-3xl text-center max-w-sm w-full">
+            <h3 class="text-lg font-bold text-white mb-1">Escaneie no Celular</h3>
+            <p class="text-xs text-slate-400 mb-6">Aponte a câmera para baixar direto no aparelho</p>
+            
+            <!-- QR Code Image using standard QR service -->
+            <div class="w-52 h-52 mx-auto bg-white p-3 rounded-2xl shadow-xl flex items-center justify-center mb-4">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://github.com/devigMurilo/fluxo/releases/download/v1.0.0/fluxo.apk" 
+                   alt="QR Code para Download do APK do Fluxo" 
+                   class="w-full h-full object-contain">
+            </div>
+
+            <div class="text-[11px] text-slate-400 font-mono break-all px-2">
+              GitHub Release v1.0.0 (Armazenamento Seguro)
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FAQ SECTION -->
+  <section id="faq" class="py-20 bg-slate-950/60 border-t border-white/5">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center mb-16">
+        <h2 class="text-xs font-bold uppercase tracking-widest text-brand-400 mb-2">Dúvidas Frequentes</h2>
+        <p class="text-3xl font-black text-white tracking-tight">Perguntas & Respostas</p>
+      </div>
+
+      <div class="space-y-4">
+        
+        <details class="glass-card rounded-2xl p-6 group cursor-pointer">
+          <summary class="font-bold text-white text-base flex justify-between items-center list-none">
+            <span>O aplicativo precisa de internet para funcionar?</span>
+            <span class="text-brand-400 transition-transform group-open:rotate-180">▼</span>
+          </summary>
+          <p class="mt-4 text-slate-400 text-sm leading-relaxed">
+            Não! O Fluxo opera 100% offline. Todos os seus registros financeiros, contas, despesas e faturas são persistidos diretamente no banco de dados SQLite interno do seu telefone. Apenas a consulta às taxas do Banco Central utiliza internet (e possui contingência offline caso você esteja desconectado).
+          </p>
+        </details>
+
+        <details class="glass-card rounded-2xl p-6 group cursor-pointer">
+          <summary class="font-bold text-white text-base flex justify-between items-center list-none">
+            <span>Meus dados financeiros estão seguros?</span>
+            <span class="text-brand-400 transition-transform group-open:rotate-180">▼</span>
+          </summary>
+          <p class="mt-4 text-slate-400 text-sm leading-relaxed">
+            Totalmente seguros. Ao contrário de outros apps que enviam suas transações bancárias para nuvens desconhecidas, no Fluxo os dados nunca saem do seu celular. Sua senha de acesso também passa por hash criptográfico seguro (SHA-256).
+          </p>
+        </details>
+
+        <details class="glass-card rounded-2xl p-6 group cursor-pointer">
+          <summary class="font-bold text-white text-base flex justify-between items-center list-none">
+            <span>O app cobra alguma assinatura ou tem anúncios?</span>
+            <span class="text-brand-400 transition-transform group-open:rotate-180">▼</span>
+          </summary>
+          <p class="mt-4 text-slate-400 text-sm leading-relaxed">
+            Zero mensalidades, zero cobranças ocultas e zero anúncios publicitários. O projeto é de código aberto sob licença permissiva e foi construído com propósito de educação e organização pessoal.
+          </p>
+        </details>
+
+        <details class="glass-card rounded-2xl p-6 group cursor-pointer">
+          <summary class="font-bold text-white text-base flex justify-between items-center list-none">
+            <span>Como faço para atualizar o app no futuro?</span>
+            <span class="text-brand-400 transition-transform group-open:rotate-180">▼</span>
+          </summary>
+          <p class="mt-4 text-slate-400 text-sm leading-relaxed">
+            Sempre que uma nova versão estiver disponível, basta baixar a nova versão do arquivo APK na aba de Releases do GitHub e instalar por cima. Seus dados no banco SQLite são preservados pelo Android durante a atualização!
+          </p>
+        </details>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/5 py-12 bg-black/60">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      
+      <div class="flex items-center gap-3">
+        <img src="./assets/icon.png" alt="Fluxo" class="w-8 h-8 rounded-xl">
+        <span class="font-bold text-white tracking-tight text-lg">Fluxo</span>
+        <span class="text-xs text-slate-500">© 2026 Murilo (@devigMurilo). Todos os direitos reservados.</span>
+      </div>
+
+      <div class="flex items-center gap-6 text-sm text-slate-400">
+        <a href="https://github.com/devigMurilo/fluxo" target="_blank" rel="noopener noreferrer" class="hover:text-brand-400 transition-colors">Código Fonte</a>
+        <a href="https://github.com/devigMurilo/fluxo/releases" target="_blank" rel="noopener noreferrer" class="hover:text-brand-400 transition-colors">Releases</a>
+        <a href="https://github.com/devigMurilo/fluxo/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-brand-400 transition-colors">Licença MIT</a>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- Interactive Simulator Script -->
+  <script>
+    const sliderAporte = document.getElementById('sliderAporte');
+    const sliderPrazo = document.getElementById('sliderPrazo');
+    const sliderTaxa = document.getElementById('sliderTaxa');
+
+    const valorAporteLabel = document.getElementById('valorAporteLabel');
+    const valorPrazoLabel = document.getElementById('valorPrazoLabel');
+    const valorTaxaLabel = document.getElementById('valorTaxaLabel');
+
+    const resultadoFinal = document.getElementById('resultadoFinal');
+    const totalInvestido = document.getElementById('totalInvestido');
+    const totalJuros = document.getElementById('totalJuros');
+
+    function formatBRL(value) {
+      return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function calculate() {
+      const aporte = parseFloat(sliderAporte.value);
+      const anos = parseInt(sliderPrazo.value, 10);
+      const taxaAnual = parseFloat(sliderTaxa.value) / 100;
+
+      const meses = anos * 12;
+      const taxaMensal = Math.pow(1 + taxaAnual, 1 / 12) - 1;
+
+      // Compound Interest Future Value of Monthly Annuity:
+      // FV = PMT * [ ((1 + i)^n - 1) / i ] * (1 + i)
+      let montante = 0;
+      if (taxaMensal > 0) {
+        montante = aporte * ((Math.pow(1 + taxaMensal, meses) - 1) / taxaMensal) * (1 + taxaMensal);
+      } else {
+        montante = aporte * meses;
+      }
+
+      const totalAportado = aporte * meses;
+      const jurosGanhos = Math.max(0, montante - totalAportado);
+
+      valorAporteLabel.textContent = formatBRL(aporte);
+      valorPrazoLabel.textContent = `${anos} ${anos === 1 ? 'ano' : 'anos'} (${meses} meses)`;
+      valorTaxaLabel.textContent = `${sliderTaxa.value}% a.a.`;
+
+      resultadoFinal.textContent = formatBRL(montante);
+      totalInvestido.textContent = formatBRL(totalAportado);
+      totalJuros.textContent = `+ ${formatBRL(jurosGanhos)}`;
+    }
+
+    sliderAporte.addEventListener('input', calculate);
+    sliderPrazo.addEventListener('input', calculate);
+    sliderTaxa.addEventListener('input', calculate);
+
+    calculate();
+  </script>
+
+</body>
+</html>

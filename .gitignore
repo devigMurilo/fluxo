@@ -27,3 +27,8 @@ web-build/
 .DS_Store
 *.swp
 *.swo
+
+# Builds & Binaries
+*.apk
+fluxo.apk
+
