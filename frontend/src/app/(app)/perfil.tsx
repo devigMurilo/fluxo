@@ -161,7 +161,7 @@ export default function PerfilScreen() {
 
         <TouchableOpacity
           style={styles.menuRow}
-          onPress={() => router.push('/(app)/faturas')}
+          onPress={() => router.push('/faturas')}
           activeOpacity={0.7}
         >
           <View style={styles.menuRowLeft}>
@@ -180,7 +180,7 @@ export default function PerfilScreen() {
 
         <TouchableOpacity
           style={styles.menuRow}
-          onPress={() => router.push('/(app)/investimentos')}
+          onPress={() => router.push('/investimentos')}
           activeOpacity={0.7}
         >
           <View style={styles.menuRowLeft}>

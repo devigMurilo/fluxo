@@ -14,18 +14,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
-import { useFinance } from '../../context/FinanceContext';
-import { Colors, CategoryPresets } from '../../constants/theme';
-import { CategoryModal } from '../../components/CategoryModal';
+import { useAuth } from '../context/AuthContext';
+import { useFinance } from '../context/FinanceContext';
+import { Colors, CategoryPresets } from '../constants/theme';
+import { CategoryModal } from '../components/CategoryModal';
 import {
   addCategory,
   updateCategory,
   deleteCategory,
   getCategoriesWithCount,
   Category,
-} from '../../db/queries';
-import { playHaptic } from '../../utils/haptics';
+} from '../db/queries';
+import { playHaptic } from '../utils/haptics';
 
 type CategoryWithCount = Category & { transactionCount: number };
 

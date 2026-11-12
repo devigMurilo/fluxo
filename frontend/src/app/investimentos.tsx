@@ -11,21 +11,21 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
-import { useFinance } from '../../context/FinanceContext';
-import { Colors } from '../../constants/theme';
-import { fetchBcbRates, BcbRates, EDUCATIONAL_CARDS } from '../../services/bcb';
-import { InvestmentSimulator } from '../../components/InvestmentSimulator';
-import { InvestmentModal } from '../../components/InvestmentModal';
+import { useAuth } from '../context/AuthContext';
+import { useFinance } from '../context/FinanceContext';
+import { Colors } from '../constants/theme';
+import { fetchBcbRates, BcbRates, EDUCATIONAL_CARDS } from '../services/bcb';
+import { InvestmentSimulator } from '../components/InvestmentSimulator';
+import { InvestmentModal } from '../components/InvestmentModal';
 import {
   getInvestments,
   addInvestment,
   deleteInvestment,
   Investment,
-} from '../../db/queries';
-import { centsToBRL } from '../../utils/formatCurrency';
-import { formatDateBR } from '../../utils/dates';
-import { playHaptic } from '../../utils/haptics';
+} from '../db/queries';
+import { centsToBRL } from '../utils/formatCurrency';
+import { formatDateBR } from '../utils/dates';
+import { playHaptic } from '../utils/haptics';
 
 export default function InvestimentosScreen() {
   const router = useRouter();

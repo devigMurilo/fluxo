@@ -101,33 +101,6 @@ export default function AppLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="categorias"
-        options={{
-          href: null,
-          title: 'Categorias',
-          headerTitle: 'Minhas Categorias',
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="faturas"
-        options={{
-          href: null,
-          title: 'Faturas',
-          headerTitle: 'Faturas & Lembretes',
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="investimentos"
-        options={{
-          href: null,
-          title: 'Investimentos',
-          headerTitle: 'Investimentos & Simulações',
-          headerShown: false,
-        }}
-      />
     </Tabs>
   );
 }

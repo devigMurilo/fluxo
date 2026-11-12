@@ -10,11 +10,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
-import { useFinance } from '../../context/FinanceContext';
-import { Colors } from '../../constants/theme';
-import { MonthSelector } from '../../components/MonthSelector';
-import { BillModal } from '../../components/BillModal';
+import { useAuth } from '../context/AuthContext';
+import { useFinance } from '../context/FinanceContext';
+import { Colors } from '../constants/theme';
+import { MonthSelector } from '../components/MonthSelector';
+import { BillModal } from '../components/BillModal';
 import {
   getBills,
   addBill,
@@ -22,10 +22,10 @@ import {
   deleteBill,
   toggleBillPaid,
   Bill,
-} from '../../db/queries';
-import { scheduleBillNotification, cancelNotification } from '../../services/notifications';
-import { centsToBRL } from '../../utils/formatCurrency';
-import { playHaptic } from '../../utils/haptics';
+} from '../db/queries';
+import { scheduleBillNotification, cancelNotification } from '../services/notifications';
+import { centsToBRL } from '../utils/formatCurrency';
+import { playHaptic } from '../utils/haptics';
 
 export default function FaturasScreen() {
   const router = useRouter();
