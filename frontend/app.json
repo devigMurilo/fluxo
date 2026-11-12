@@ -39,7 +39,8 @@
           "faceIDPermission": "Permita que o Fluxo utilize Face ID para autenticar seu acesso de forma rápida e segura."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-status-bar"
     ],
     "scheme": "fluxo",
     "extra": {
