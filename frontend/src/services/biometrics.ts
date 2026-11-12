@@ -231,46 +231,13 @@ export async function authenticateAndLoginWithBiometrics(): Promise<{
     return { success: false, error: authResult.error };
   }
 
-  // Tenta renovar o token com o backend para obter uma sessão nova
-  try {
-    const { data } = await axios.post(
-      `${api.defaults.baseURL}/api/auth/refresh/`,
-      { refresh: savedSession.refreshToken },
-      { timeout: 8000 }
-    );
+  // Autenticação biométrica validada pelo sistema operacional do celular
+  // Restaura a sessão do usuário localmente
+  const localToken = (await getStorageItem(TOKEN_KEY)) || 'local_offline_access_token';
+  await saveAuthData(localToken, savedSession.refreshToken, savedSession.user);
 
-    const newAccessToken = data.access;
-    const newRefreshToken = data.refresh || savedSession.refreshToken;
-
-    // Salva a nova sessão ativa
-    await saveAuthData(newAccessToken, newRefreshToken, savedSession.user);
-
-    // Atualiza o refresh token salvo para a biometria
-    await setStorageItem(BIOMETRIC_REFRESH_KEY, newRefreshToken);
-
-    return {
-      success: true,
-      user: savedSession.user,
-    };
-  } catch (error: any) {
-    // Se o backend retornou 401 ou 400 (refresh token inválido ou expirado)
-    if (error.response?.status === 401 || error.response?.status === 400) {
-      await disableBiometrics();
-      return {
-        success: false,
-        expired: true,
-        error: 'Sua sessão biométrica expirou por segurança. Entre com seu e-mail e senha.',
-      };
-    }
-
-    // Se houve erro de conexão (offline), mas a autenticação biométrica foi confirmada com sucesso:
-    // Permite o login off-line com os dados locais do SQLite!
-    const localToken = (await getStorageItem(TOKEN_KEY)) || 'offline-biometric-token';
-    await saveAuthData(localToken, savedSession.refreshToken, savedSession.user);
-
-    return {
-      success: true,
-      user: savedSession.user,
-    };
-  }
+  return {
+    success: true,
+    user: savedSession.user,
+  };
 }

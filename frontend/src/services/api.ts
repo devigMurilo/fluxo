@@ -2,8 +2,8 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-// Seleciona a URL base padrão (Túnel público ativo para celular físico e internet)
-export const DEFAULT_API_URL = 'https://fluffy-games-clean.loca.lt';
+// Seleciona a URL base padrão (IP da rede local para acesso via celular físico)
+export const DEFAULT_API_URL = 'http://192.168.1.8:8000';
 
 const TOKEN_KEY = 'fluxo_access_token';
 const REFRESH_KEY = 'fluxo_refresh_token';

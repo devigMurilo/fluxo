@@ -15,7 +15,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../constants/theme';
-import { api, saveCustomApiUrl, DEFAULT_API_URL } from '../../services/api';
 import { playHaptic } from '../../utils/haptics';
 
 export default function PerfilScreen() {
@@ -32,8 +31,6 @@ export default function PerfilScreen() {
     toggleBiometrics,
   } = useAuth();
 
-  const [apiUrl, setApiUrl] = useState(api.defaults.baseURL || DEFAULT_API_URL);
-  const [testingConnection, setTestingConnection] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
 
   const handleToggleBiometrics = async (value: boolean) => {
@@ -79,36 +76,6 @@ export default function PerfilScreen() {
       Alert.alert('Erro', err?.message || 'Falha ao alterar configuração de biometria.');
     } finally {
       setBiometricLoading(false);
-    }
-  };
-
-  const handleSaveApi = async () => {
-    if (!apiUrl.trim()) return;
-    playHaptic.success();
-    await saveCustomApiUrl(apiUrl.trim());
-    Alert.alert('Sucesso', 'Endereço da API salvo com sucesso!');
-  };
-
-  const handleTestConnection = async () => {
-    playHaptic.light();
-    setTestingConnection(true);
-    try {
-      await api.get('/api/auth/me/');
-      playHaptic.success();
-      Alert.alert('Conexão bem-sucedida! 🟢', 'A API respondeu normalmente.');
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        playHaptic.success();
-        Alert.alert('Conexão ativa! 🟢', 'Servidor alcançado com sucesso (sessão autenticada).');
-      } else {
-        playHaptic.error();
-        Alert.alert(
-          'Falha de conexão 🔴',
-          `Não foi possível alcançar o servidor em: ${apiUrl}\nVerifique se o backend Django está rodando.`
-        );
-      }
-    } finally {
-      setTestingConnection(false);
     }
   };
 
@@ -273,38 +240,22 @@ export default function PerfilScreen() {
         </View>
       </View>
 
-      {/* Configurações de Conexão com API */}
+      {/* Status do Armazenamento */}
       <View style={styles.card}>
-        <Text style={styles.cardSectionTitle}>Servidor de Autenticação (Django)</Text>
-        <Text style={styles.cardDesc}>
-          URL base da API REST para autenticação JWT e segurança.
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          value={apiUrl}
-          onChangeText={setApiUrl}
-          placeholder="http://10.0.2.2:8000"
-          placeholderTextColor={Colors.textMuted}
-          autoCapitalize="none"
-        />
-
-        <View style={styles.apiActions}>
-          <TouchableOpacity
-            style={styles.testBtn}
-            onPress={handleTestConnection}
-            disabled={testingConnection}
-          >
-            <Ionicons name="pulse-outline" size={16} color={Colors.primary} />
-            <Text style={styles.testBtnText}>
-              {testingConnection ? 'Testando...' : 'Testar Conexão'}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+          <View style={[styles.menuIconCircle, { backgroundColor: `${Colors.primary}20`, marginRight: 10 }]}>
+            <Ionicons name="phone-portrait-outline" size={20} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardSectionTitle}>Modo Autônomo & Seguro</Text>
+            <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600' }}>
+              100% Offline (Sem Servidor Externo)
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveApi}>
-            <Text style={styles.saveBtnText}>Salvar Endereço</Text>
-          </TouchableOpacity>
+          </View>
         </View>
+        <Text style={styles.cardDesc}>
+          Seus dados, transações, faturas e hábitos ficam salvos e criptografados diretamente na memória do seu celular (SQLite). Você não precisa de internet nem de servidor ativo para usar o app.
+        </Text>
       </View>
 
       {/* Informações do MVP */}
@@ -312,16 +263,16 @@ export default function PerfilScreen() {
         <Text style={styles.cardSectionTitle}>Sobre o Aplicativo</Text>
         <View style={styles.infoRow}>
           <Text style={styles.infoKey}>Versão</Text>
-          <Text style={styles.infoVal}>1.1.0 (com Biometria)</Text>
+          <Text style={styles.infoVal}>1.2.0 (Offline Autônomo)</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoKey}>Armazenamento</Text>
-          <Text style={styles.infoVal}>SQLite Local (Isolado por ID)</Text>
+          <Text style={styles.infoVal}>SQLite Local (Isolado)</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoKey}>Segurança</Text>
           <Text style={styles.infoVal}>
-            {biometricsEnabled ? `${biometryLabel} + JWT Seguro` : 'Tokens JWT + SecureStore'}
+            {biometricsEnabled ? `${biometryLabel} + SHA-256` : 'SHA-256 + SecureStore'}
           </Text>
         </View>
       </View>

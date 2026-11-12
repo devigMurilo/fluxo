@@ -16,7 +16,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../constants/theme';
-import { api, saveCustomApiUrl, DEFAULT_API_URL } from '../../services/api';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -44,10 +43,6 @@ export default function LoginScreen() {
     }
   }, [savedBiometricUser]);
 
-  // Modal para ajuste de IP do servidor em celular físico
-  const [showApiModal, setShowApiModal] = useState(false);
-  const [customUrl, setCustomUrl] = useState(api.defaults.baseURL || DEFAULT_API_URL);
-
   const handleLogin = async () => {
     if (!email.trim() || !password) {
       Alert.alert('Campos incompletos', 'Informe o seu e-mail e sua senha.');
@@ -59,10 +54,7 @@ export default function LoginScreen() {
       await login(email, password);
       // O RootLayout redirecionará automaticamente para /(app)
     } catch (error: any) {
-      const msg =
-        error.response?.data?.detail ||
-        error.response?.data?.message ||
-        'Não foi possível conectar ao servidor. Verifique suas credenciais ou a URL da API.';
+      const msg = error.message || 'Não foi possível entrar. Verifique os dados digitados.';
       Alert.alert('Erro ao entrar', msg);
     } finally {
       setLoading(false);
@@ -85,13 +77,6 @@ export default function LoginScreen() {
     } finally {
       setBiometricLoading(false);
     }
-  };
-
-  const handleSaveApiUrl = async () => {
-    if (!customUrl.trim()) return;
-    await saveCustomApiUrl(customUrl.trim());
-    setShowApiModal(false);
-    Alert.alert('Sucesso', `URL da API atualizada para: ${customUrl.trim()}`);
   };
 
   const showBiometricsButton =
@@ -214,43 +199,12 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        {/* Configuração de Servidor API */}
-        <TouchableOpacity style={styles.configServerButton} onPress={() => setShowApiModal(true)}>
-          <Ionicons name="server-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.configServerText}>Configurar endereço do Servidor API</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* Modal de Configuração de API */}
-      <Modal visible={showApiModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.apiModalContent}>
-            <Text style={styles.apiModalTitle}>Configurar API Backend</Text>
-            <Text style={styles.apiModalDesc}>
-              Se estiver testando em um celular físico, informe o IP do computador na rede local (ex: http://192.168.1.50:8000).
-            </Text>
-            <TextInput
-              style={styles.apiModalInput}
-              value={customUrl}
-              onChangeText={setCustomUrl}
-              placeholder="http://192.168.x.x:8000"
-              placeholderTextColor={Colors.textMuted}
-              autoCapitalize="none"
-            />
-            <View style={styles.apiModalActions}>
-              <TouchableOpacity
-                style={styles.apiModalCancel}
-                onPress={() => setShowApiModal(false)}
-              >
-                <Text style={styles.apiModalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.apiModalSave} onPress={handleSaveApiUrl}>
-                <Text style={styles.apiModalSaveText}>Salvar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+        {/* Indicador de Armazenamento Seguro e Local */}
+        <View style={styles.offlineBadge}>
+          <Ionicons name="shield-checkmark-outline" size={14} color={Colors.primary} />
+          <Text style={styles.offlineBadgeText}>Armazenamento 100% Local & Privado</Text>
         </View>
-      </Modal>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -457,44 +411,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
   },
-  apiModalDesc: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  apiModalInput: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: Colors.text,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 18,
-  },
-  apiModalActions: {
+  offlineBadge: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    marginTop: 16,
   },
-  apiModalCancel: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  apiModalCancelText: {
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-  apiModalSave: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-  },
-  apiModalSaveText: {
-    color: '#FFF',
-    fontWeight: '700',
+  offlineBadgeText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

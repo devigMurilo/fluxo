@@ -1507,3 +1507,97 @@ export async function setGoalProgress(
 
   return { currentValue: val, completed };
 }
+
+// ----------------------------------------------------
+// USUÁRIOS (ARMAZENAMENTO 100% LOCAL / OFFLINE)
+// ----------------------------------------------------
+
+export interface LocalUser {
+  id: number;
+  name: string;
+  email: string;
+  password_hash: string;
+  created_at?: string;
+}
+
+export async function createLocalUser(
+  name: string,
+  email: string,
+  passwordHash: string
+): Promise<{ id: number; name: string; email: string }> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const trimmedName = name.trim();
+
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.users || [];
+    const id = list.length > 0 ? Math.max(...list.map((u: any) => u.id)) + 1 : 1;
+    const userObj = {
+      id,
+      name: trimmedName,
+      email: normalizedEmail,
+      password_hash: passwordHash,
+      created_at: new Date().toISOString(),
+    };
+    list.push(userObj);
+    webStorage.data.users = list;
+    webStorage.save();
+    return { id, name: userObj.name, email: userObj.email };
+  }
+
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
+    [trimmedName, normalizedEmail, passwordHash]
+  );
+
+  return {
+    id: Number(result.lastInsertRowId),
+    name: trimmedName,
+    email: normalizedEmail,
+  };
+}
+
+export async function findLocalUserByEmail(email: string): Promise<LocalUser | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.users || [];
+    const found = list.find((u: any) => u.email.toLowerCase() === normalizedEmail);
+    return found || null;
+  }
+
+  const db = await getDatabase();
+  const row = await db.getFirstAsync(
+    'SELECT * FROM users WHERE LOWER(email) = LOWER(?)',
+    [normalizedEmail]
+  );
+  return (row as LocalUser) || null;
+}
+
+export async function findLocalUserById(
+  id: number
+): Promise<{ id: number; name: string; email: string } | null> {
+  if (Platform.OS === 'web') {
+    const list = webStorage.data.users || [];
+    const found = list.find((u: any) => u.id === id);
+    return found ? { id: found.id, name: found.name, email: found.email } : null;
+  }
+
+  const db = await getDatabase();
+  const row = await db.getFirstAsync(
+    'SELECT id, name, email FROM users WHERE id = ?',
+    [id]
+  );
+  return (row as { id: number; name: string; email: string }) || null;
+}
+
+export async function getLocalUsersCount(): Promise<number> {
+  if (Platform.OS === 'web') {
+    return (webStorage.data.users || []).length;
+  }
+
+  const db = await getDatabase();
+  const row = (await db.getFirstAsync('SELECT COUNT(*) as count FROM users')) as any;
+  return row?.count || 0;
+}
+

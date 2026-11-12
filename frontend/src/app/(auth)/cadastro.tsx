@@ -53,21 +53,7 @@ export default function CadastroScreen() {
       await register(name, email, password, passwordConfirm);
       // Redirecionamento automático pelo RootLayout para /(app)
     } catch (error: any) {
-      const errorData = error.response?.data;
-      let msg = 'Não foi possível realizar o cadastro.';
-
-      if (errorData) {
-        if (typeof errorData === 'string') {
-          msg = errorData;
-        } else if (errorData.email) {
-          msg = Array.isArray(errorData.email) ? errorData.email[0] : errorData.email;
-        } else if (errorData.password) {
-          msg = Array.isArray(errorData.password) ? errorData.password[0] : errorData.password;
-        } else if (errorData.detail) {
-          msg = errorData.detail;
-        }
-      }
-
+      const msg = error.message || error.response?.data?.detail || 'Não foi possível realizar o cadastro.';
       Alert.alert('Erro no cadastro', msg);
     } finally {
       setLoading(false);

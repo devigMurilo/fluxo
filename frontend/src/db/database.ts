@@ -45,6 +45,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase | any> {
 export async function initDatabase(): Promise<void> {
   if (Platform.OS === 'web') {
     webStorage.init();
+    if (!webStorage.data.users) webStorage.data.users = [];
     if (!webStorage.data.categories) webStorage.data.categories = [];
     if (!webStorage.data.transactions) webStorage.data.transactions = [];
     if (!webStorage.data.bills) webStorage.data.bills = [];
@@ -61,6 +62,14 @@ export async function initDatabase(): Promise<void> {
 
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
 
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
